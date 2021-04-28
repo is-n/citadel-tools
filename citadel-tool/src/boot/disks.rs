@@ -10,8 +10,8 @@ use libcitadel::{Result, util};
 #[derive(Debug)]
 pub struct DiskPartition {
     path: PathBuf,
-    major: u8,
-    minor: u8,
+    major: u16,
+    minor: u16,
     blocks: usize,
 }
 
@@ -55,15 +55,15 @@ impl DiskPartition {
             bail!("could not parse");
         }
         Ok(DiskPartition::from_line_components(
-            v[0].parse::<u8>()?,    // Major
-            v[1].parse::<u8>()?,    // Minor
+            v[0].parse::<u16>()?,    // Major
+            v[1].parse::<u16>()?,    // Minor
             v[2].parse::<usize>()?, // number of blocks
             v[3],
         )) // device name
     }
 
     // create a new `DiskPartion` from parsed components of line from /proc/partitions
-    fn from_line_components(major: u8, minor: u8, blocks: usize, name: &str) -> DiskPartition {
+    fn from_line_components(major: u16, minor: u16, blocks: usize, name: &str) -> DiskPartition {
         DiskPartition {
             path: PathBuf::from("/dev").join(name),
             major,
