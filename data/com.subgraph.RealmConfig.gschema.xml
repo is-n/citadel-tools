@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+    <schema id="com.subgraph.citadel" path="/com/subgraph/citadel/">
+        <key name="frame-color-list" type="as">
+            <default>[
+                'rgb(153,193,241)',
+                'rgb(143,240,164)',
+                'rgb(249,240,107)',
+                'rgb(255,190,111)',
+                'rgb(246,97,81)',
+                'rgb(220,138,221)',
+                'rgb(205,171,143)'
+                ]</default>
+            <summary />
+        </key>
+
+        <key name="realm-frame-colors" type="as">
+            <default>['main:rgb(153,193,241)']</default>
+        </key>
+
+    </schema>
+</schemalist>

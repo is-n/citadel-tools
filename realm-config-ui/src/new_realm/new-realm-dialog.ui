@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="NewRealmDialog" parent="GtkDialog">
+    <property name="title">Create New Realm</property>
+    <child internal-child="vbox">
+    <object class="GtkBox">
+      <property name="orientation">vertical</property>
+
+      <!-- GtkInfoBar -->
+      <child>
+        <object class="GtkInfoBar" id="infobar">
+          <property name="revealed">False</property>
+          <property name="message-type">warning</property>
+          <child internal-child="content_area">
+            <object class="GtkBox">
+              <child>
+                <object class="GtkLabel" id="infolabel">
+                  <property name="label">Name already exists</property>
+                </object>
+              </child>
+            </object>
+          </child>
+        </object>
+      </child>
+
+      <!-- GtkLabel -->
+      <child>
+        <object class="GtkLabel" id="label">
+          <property name="label">Enter name for new realm:</property>
+          <property name="halign">start</property>
+          <property name="margin-top">10</property>
+          <property name="margin-start">20</property>
+        </object>
+      </child>
+
+      <!-- GtkEntry-->
+      <child>
+        <object class="GtkBox">
+          <child>
+            <object class="GtkEntry" id="entry">
+              <property name="hexpand">True</property>
+              <property name="placeholder-text">Enter name of new realm</property>
+              <property name="margin-top">10</property>
+              <property name="margin-bottom">20</property>
+              <property name="margin-start">20</property>
+              <property name="margin-end">5</property>
+            </object>
+          </child>
+
+         <!-- GtkButton -->
+          <child>
+            <object class="GtkButton" id="config-button">
+              <property name="sensitive">False</property>
+              <property name="margin-top">10</property>
+              <property name="margin-bottom">20</property>
+              <property name="margin-start">5</property>
+              <property name="margin-end">20</property>
+              <child>
+                <object class="GtkImage">
+                  <property name="icon-name">emblem-system-symbolic</property>
+                </object>
+              </child>
+            </object>
+          </child>
+        </object>
+      </child>
+
+    </object>
+    </child>
+
+    <child type="action">
+      <object class="GtkButton" id="cancel_button">
+        <property name="use-underline">1</property>
+        <property name="label">Cancel</property>
+      </object>
+    </child>
+    <child type="action">
+      <object class="GtkButton" id="ok_button">
+        <property name="use-underline">1</property>
+        <property name="label">Create</property>
+        <property name="can-default">True</property>
+      </object>
+    </child>
+    <action-widgets>
+      <action-widget response="cancel">cancel_button</action-widget>
+      <action-widget response="ok" default="true">ok_button</action-widget>
+    </action-widgets>
+  </template>
+</interface>

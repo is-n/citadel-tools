@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="ConfigureOption" parent="GtkListBoxRow">
+    <property name="width_request">100</property>
+    <property name="activatable">False</property>
+    <property name="selectable">False</property>
+    <child>
+      <object class="GtkBox">
+        <property name="margin-bottom">5</property>
+        <property name="spacing">30</property>
+        <child>
+          <object class="GtkLabel" id="name">
+            <property name="hexpand">True</property>
+            <property name="halign">start</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkSwitch" id="switch">
+            <property name="halign">end</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+
+</interface>

@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+
+  <template class="ConfigureDialog" parent="GtkDialog">
+    <property name="title">Configure Realm</property>
+    <property name="modal">True</property>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="margin">20</property>
+
+        <child>
+          <object class="GtkLabel">
+            <property name="label">Options</property>
+            <property name="halign">start</property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkFrame">
+            <property name="margin-bottom">20</property>
+            <child>
+              <!-- -->
+              <object class="GtkListBox" id="bool-options-box">
+                <property name="margin">10</property>
+                <property name="selection_mode">none</property>
+                <property name="activate_on_single_click">False</property>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkBox">
+            <property name="tooltip-markup"><![CDATA[<b><big>Overlay</big></b>
+
+Type of rootfs overlay realm is configured to use.
+
+  <b>None</b>     Don't use a rootfs overlay
+  <b>TmpFS</b>    Use a rootfs overlay stored on tmpfs
+  <b>Storage</b>  Use a rootfs overlay stored on disk in storage partition
+]]></property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Overlay</property>
+                <property name="hexpand">True</property>
+                <property name="halign">start</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkComboBoxText" id="overlay-combo">
+                <property name="active">0</property>
+                <items>
+                  <item id="storage">Storage</item>
+                  <item id="tmpfs">TmpFS</item>
+                  <item id="none">None</item>
+                </items>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkBox">
+            <property name="tooltip-markup"><![CDATA[<b><big>RealmFS</big></b>
+
+Root filesystem image to use for realm.
+]]></property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">RealmFS</property>
+                <property name="hexpand">True</property>
+                <property name="halign">start</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkComboBoxText" id="realmfs-combo">
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkBox">
+            <property name="tooltip-markup"><![CDATA[<b><big>Terminal Color Scheme</big></b>
+
+Choose a color scheme to use in terminals in this realm.
+]]></property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Color Scheme</property>
+                <property name="hexpand">True</property>
+                <property name="halign">start</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="color-scheme-button">
+                <property name="label">Default Dark</property>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkBox">
+            <property name="tooltip-markup"><![CDATA[<b><big>Window Frame Color</big></b>
+
+Set a color to be used when frames are drawn around application windows for this realm.
+]]></property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Frame Color</property>
+                <property name="hexpand">True</property>
+                <property name="halign">start</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkColorButton" id="frame-color-button">
+                <property name="color">#ffff00000000</property>
+              </object>
+            </child>
+          </object>
+        </child>
+
+      </object>
+    </child>
+    <child type="action">
+      <object class="GtkButton" id="cancel_button">
+        <property name="use-underline">1</property>
+        <property name="label">Cancel</property>
+      </object>
+    </child>
+    <child type="action">
+      <object class="GtkButton" id="ok_button">
+        <property name="use-underline">1</property>
+        <property name="label">Apply</property>
+        <property name="can-default">True</property>
+      </object>
+    </child>
+    <action-widgets>
+      <action-widget response="cancel">cancel_button</action-widget>
+      <action-widget response="ok" default="true">ok_button</action-widget>
+    </action-widgets>
+
+  </template>
+  <object class="GtkSizeGroup">
+    <widgets>
+      <widget name="overlay-combo" />
+      <widget name="realmfs-combo" />
+      <widget name="color-scheme-button" />
+      <widget name="frame-color-button" />
+    </widgets>
+  </object>
+</interface>
+
