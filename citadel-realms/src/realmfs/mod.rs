@@ -161,7 +161,7 @@ impl <'a> RealmFSInfoRender <'a> {
             let free = r.free_size_blocks()?;
             let allocated = r.allocated_size_blocks()?;
             Ok((free,allocated))
-        };
+        }
 
         let r = self.realmfs;
 
