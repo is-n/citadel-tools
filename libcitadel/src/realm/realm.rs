@@ -389,6 +389,11 @@ impl Realm {
         self.leader_pid().map(|pid| PathBuf::from(format!("/proc/{}/root", pid)))
     }
 
+    pub fn pid_namespace(&self) -> Option<String> {
+        let pid = self.leader_pid()?;
+        let path = symlink::read(format!("/proc/{}/ns/pid", pid))?;
+        path.to_str().map(|s| s.to_owned())
+    }
 
     /// Query for 'leader pid' of realm nspawn instance with machinectl.
     /// The leader pid is the 'pid 1' of the realm container as seen from
