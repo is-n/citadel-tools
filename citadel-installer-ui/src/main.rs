@@ -1,13 +1,11 @@
 #![allow(deprecated)]
-#[macro_use] extern crate glib;
 use gtk::prelude::*;
-use gio::prelude::*;
-use std::env::args;
 mod ui;
 mod builder;
 mod error;
 mod rowdata;
 mod dbus_client;
+
 use libcitadel::CommandLine;
 use ui::Ui;
 
@@ -15,8 +13,7 @@ pub use error::{Result,Error};
 
 fn main() {
     let application =
-        gtk::Application::new(Some("com.subgraph.citadel-installer"), Default::default())
-            .expect("Initialization failed...");
+        gtk::Application::new(Some("com.subgraph.citadel-installer"), Default::default());
 
     application.connect_activate(|app| {
         if !(CommandLine::live_mode() || CommandLine::install_mode()) {
@@ -39,5 +36,5 @@ fn main() {
             }
         }
     });
-    application.run(&args().collect::<Vec<_>>());
+    application.run();
 }

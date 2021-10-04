@@ -17,32 +17,32 @@ impl Builder {
     }
 
     pub fn get_entry(&self, name: &str) -> Result<gtk::Entry> {
-        Self::ok_or_err("GtkEntry", name, self.builder.get_object(name))
+        Self::ok_or_err("GtkEntry", name, self.builder.object(name))
     }
 
     pub fn get_box(&self, name: &str) -> Result<gtk::Box> {
-        Self::ok_or_err("GtkBox", name, self.builder.get_object(name))
+        Self::ok_or_err("GtkBox", name, self.builder.object(name))
     }
 
 
 
     pub fn get_label(&self, name: &str) -> Result<gtk::Label> {
-        Self::ok_or_err("GtkLabel", name, self.builder.get_object(name))
+        Self::ok_or_err("GtkLabel", name, self.builder.object(name))
     }
 
     pub fn get_listbox(&self, name: &str) -> Result<gtk::ListBox> {
-        Self::ok_or_err("GtkListBox", name, self.builder.get_object(name))
+        Self::ok_or_err("GtkListBox", name, self.builder.object(name))
     }
 
     pub fn get_progress_bar(&self, name: &str) -> Result<gtk::ProgressBar> {
-        Self::ok_or_err("GtkProgressBar", name, self.builder.get_object(name))
+        Self::ok_or_err("GtkProgressBar", name, self.builder.object(name))
     }
 
     pub fn get_textview(&self, name: &str) -> Result<gtk::TextView> {
-        Self::ok_or_err("GtkTextView", name, self.builder.get_object(name))
+        Self::ok_or_err("GtkTextView", name, self.builder.object(name))
     }
 
     pub fn get_scrolled_window(&self, name: &str) -> Result<gtk::ScrolledWindow> {
-        Self::ok_or_err("GtkScrolledWindow", name, self.builder.get_object(name))
+        Self::ok_or_err("GtkScrolledWindow", name, self.builder.object(name))
     }
 }

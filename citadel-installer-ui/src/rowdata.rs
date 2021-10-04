@@ -1,156 +1,130 @@
-
 use gio::prelude::*;
 use std::fmt;
 
-pub mod row_data {
+use glib::subclass::prelude::*;
+use glib::ParamSpec;
+use gtk::glib;
 
-    use super::*;
+use std::cell::RefCell;
 
-    use glib::subclass;
-    use glib::subclass::prelude::*;
-    use glib::translate::*;
+#[derive(Default)]
+pub struct RowDataImpl {
+    model: RefCell<Option<String>>,
+    path: RefCell<Option<String>>,
+    size: RefCell<Option<String>>,
+    removable: RefCell<bool>,
+}
 
-    mod imp {
-        use super::*;
-        use std::cell::RefCell;
+#[glib::object_subclass]
+impl ObjectSubclass for RowDataImpl {
+    const NAME: &'static str = "RowData";
+    type Type = RowData;
+    type ParentType = glib::Object;
+}
 
-        pub struct RowData {
-            model: RefCell<Option<String>>,
-            path: RefCell<Option<String>>,
-            size: RefCell<Option<String>>,
-            removable: RefCell<bool>,
-        }
-
-        static PROPERTIES: [subclass::Property; 4] = [
-            subclass::Property("model", |name| {
-                glib::ParamSpec::string(
-                    name,
+impl ObjectImpl for RowDataImpl {
+    fn properties() -> &'static [ParamSpec] {
+        use once_cell::sync::Lazy;
+        static PROPERTIES: Lazy<Vec<glib::ParamSpec>> = Lazy::new(|| {
+            vec![
+                glib::ParamSpec::new_string(
+                    "model",
                     "Model",
                     "Model",
-                    None, // Default value
+                    None,
                     glib::ParamFlags::READWRITE,
-                )
-            }),
-            subclass::Property("path", |name| {
-                glib::ParamSpec::string(
-                    name,
+                ),
+                glib::ParamSpec::new_string(
+                    "path",
                     "Path",
                     "Path",
-                    None, // Default value
+                    None,
                     glib::ParamFlags::READWRITE,
-                )
-            }),
-            subclass::Property("size", |name| {
-                glib::ParamSpec::string(
-                    name,
+                ),
+                glib::ParamSpec::new_string(
+                    "size",
                     "Size",
                     "Size",
-                    None, // Default value
+                    None,
                     glib::ParamFlags::READWRITE,
-                )
-            }),
-            subclass::Property("removable", |name| {
-                glib::ParamSpec::boolean(
-                    name,
+                ),
+                glib::ParamSpec::new_boolean(
+                    "removable",
                     "Removable",
                     "Removable",
-                    false, // Default value
+                    false,
                     glib::ParamFlags::READWRITE,
-                )
-            }),
-        ];
+                ),
+            ]
+        });
+        PROPERTIES.as_ref()
+    }
 
-        impl ObjectSubclass for RowData {
-            const NAME: &'static str = "RowData";
-            type ParentType = glib::Object;
-            type Instance = subclass::simple::InstanceStruct<Self>;
-            type Class = subclass::simple::ClassStruct<Self>;
-
-            glib_object_subclass!();
-
-            fn class_init(klass: &mut Self::Class) {
-                klass.install_properties(&PROPERTIES);
+    fn set_property(
+        &self,
+        _obj: &Self::Type,
+        _id: usize,
+        value: &glib::Value,
+        pspec: &glib::ParamSpec,
+    ) {
+        match pspec.name() {
+            "model" => {
+                let model = value
+                    .get()
+                    .expect("type conformity checked by `Object::set_property`");
+                self.model.replace(model);
             }
-
-            fn new() -> Self {
-                Self {
-                    model: RefCell::new(None),
-                    path: RefCell::new(None),
-                    size: RefCell::new(None),
-                    removable: RefCell::new(false),
-                }
+            "path" => {
+                let path = value
+                    .get()
+                    .expect("type conformity checked by `Object::set_property`");
+                self.path.replace(path);
             }
-        }
-
-        impl ObjectImpl for RowData {
-            glib_object_impl!();
-
-            fn set_property(&self, _obj: &glib::Object, id: usize, value: &glib::Value) {
-                let prop = &PROPERTIES[id];
-
-                match *prop {
-                    subclass::Property("model", ..) => {
-                        let model = value
-                            .get()
-                            .expect("type conformity checked by `Object::set_property`");
-                        self.model.replace(model);
-                    }
-                    subclass::Property("path", ..) => {
-                        let path = value
-                            .get()
-                            .expect("type conformity checked by `Object::set_property`");
-                        self.path.replace(path);
-                    }
-                    subclass::Property("size", ..) => {
-                        let size = value
-                            .get()
-                            .expect("type conformity checked by `Object::set_property`");
-                        self.size.replace(size);
-                    }
-                    subclass::Property("removable", ..) => {
-                        let removable = value
-                            .get_some()
-                            .expect("type conformity checked by `Object::set_property`");
-                        self.removable.replace(removable);
-                    }
-                    _ => unimplemented!(),
-                }
+            "size" => {
+                let size = value
+                    .get()
+                    .expect("type conformity checked by `Object::set_property`");
+                self.size.replace(size);
             }
-
-            fn get_property(&self, _obj: &glib::Object, id: usize) -> Result<glib::Value, ()> {
-                let prop = &PROPERTIES[id];
-
-                match *prop {
-                    subclass::Property("model", ..) => Ok(self.model.borrow().to_value()),
-                    subclass::Property("path", ..) => Ok(self.path.borrow().to_value()),
-                    subclass::Property("size", ..) => Ok(self.size.borrow().to_value()),
-                    subclass::Property("removable", ..) => Ok(self.removable.borrow().to_value()),
-                    _ => unimplemented!(),
-                }
+            "removable" => {
+                let removable = value
+                    .get()
+                    .expect("type conformity checked by `Object::set_property`");
+                self.removable.replace(removable);
             }
+            _ => unimplemented!(),
         }
     }
 
-    glib_wrapper! {
-        pub struct RowData(Object<subclass::simple::InstanceStruct<imp::RowData>, subclass::simple::ClassStruct<imp::RowData>, RowDataClass>);
-
-        match fn {
-            get_type => || imp::RowData::get_type().to_glib(),
+    fn property(&self, _obj: &Self::Type, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+        match pspec.name() {
+            "model" => self.model.borrow().to_value(),
+            "path" => self.path.borrow().to_value(),
+            "size" => self.size.borrow().to_value(),
+            "removable" => self.removable.borrow().to_value(),
+            _ => unimplemented!(),
         }
     }
+}
 
-    impl RowData {
-        pub fn new(model: &str, path: &str, size: &str, removable: bool) -> RowData {
-            glib::Object::new(Self::static_type(), &[("model", &model), ("path", &path), ("size", &size), ("removable", &removable)])
-                .expect("Failed to create row data")
-                .downcast()
-                .expect("Created row data is of wrong type")
-        }
+glib::wrapper! {
+    pub struct RowData(ObjectSubclass<RowDataImpl>);
+}
+
+impl RowData {
+    pub fn new(model: &str, path: &str, size: &str, removable: bool) -> RowData {
+        glib::Object::new(&[
+            ("model", &model),
+            ("path", &path),
+            ("size", &size),
+            ("removable", &removable),
+        ])
+        .expect("Failed to create row data")
     }
+}
 
-    impl fmt::Display for RowData {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "{:?}", self.1)
-        }
+impl fmt::Display for RowData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.0)
     }
 }

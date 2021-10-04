@@ -10,8 +10,10 @@ homepage = "https://subgraph.com"
 libcitadel = { path = "../libcitadel" }
 failure = "0.1.8"
 dbus = "0.8.4"
-gtk = { version = "0.9.0", features = ["v3_16"] }
-gio = "0.9.1"
-glib = "0.10.2"
-gdk = "0.13.2"
+gtk = { version = "0.14.0", features = ["v3_24"] }
+gio = "0.14.0"
+glib = "0.14.0"
+glib-macros = "0.14.0"
+gdk = "0.14.0"
 pango = "0.9.1"
+once_cell = "1.0"

@@ -1,13 +1,13 @@
 use gtk::prelude::*;
+use gtk::glib;
 
-use gio::prelude::*;
 use dbus::Message;
 use std::time::Duration;
 use std::thread;
 use std::collections::HashMap;
 use dbus::blocking::{Connection, Proxy};
 use crate::builder::*;
-use crate::rowdata::row_data::RowData;
+use crate::rowdata::RowData;
 use crate::{Result, Error};
 use crate::dbus_client::*;
 
@@ -41,6 +41,7 @@ pub struct Ui {
     pub luks_password_status_label: gtk::Label,
     pub disks_listbox: gtk::ListBox,
     pub disks_model: gio::ListStore,
+    pub disk_rows: Vec<RowData>,
     pub confirm_install_label: gtk::Label,
     pub install_page: gtk::Box,
     pub install_progress: gtk::ProgressBar,
@@ -57,11 +58,11 @@ impl Ui {
         assistant.set_position(gtk::WindowPosition::CenterAlways);
         
         assistant.set_application(Some(application));
-        assistant.connect_delete_event(clone!(@strong application => move |_, _| {
+        assistant.connect_delete_event(glib::clone!(@strong application => move |_, _| {
             application.quit();
             gtk::Inhibit(false)
         }));
-        assistant.connect_cancel(clone!(@strong application => move |_| {
+        assistant.connect_cancel(glib::clone!(@strong application => move |_| {
             application.quit();
         }));
         let welcome_builder = Builder::new(WELCOME_UI);
@@ -91,7 +92,7 @@ impl Ui {
             let item = item.downcast_ref::<RowData>().expect("Row data is of wrong type");
             let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 5);
             hbox.set_homogeneous(true);
-            let removable = item.get_property("removable").unwrap().get().unwrap().unwrap();
+            let removable= item.property("removable").unwrap().get::<bool>().unwrap();
             let icon_name = Self::get_disk_icon(removable);
             let disk_icon = gtk::Image::from_icon_name(Some(&icon_name), gtk::IconSize::LargeToolbar);
             disk_icon.set_halign(gtk::Align::Start);
@@ -121,7 +122,7 @@ impl Ui {
             row.show_all();
             row.upcast::<gtk::Widget>()
         });
-        disks_listbox.connect_row_selected(clone!(@strong assistant, @strong install_destination_page => move |_, listbox_row | {
+        disks_listbox.connect_row_selected(glib::clone!(@strong assistant, @strong install_destination_page => move |_, listbox_row | {
             if let Some(_) = listbox_row {
                 assistant.set_page_complete(&install_destination_page, true);
             }
@@ -156,6 +157,7 @@ impl Ui {
             luks_password_status_label,
             disks_listbox,
             disks_model,
+            disk_rows: disks.clone(),
             confirm_install_label,
             install_page,
             install_progress,
@@ -163,12 +165,12 @@ impl Ui {
             install_textview,
             sender,
         };
-        receiver.attach(None,clone!(@strong ui, @strong application =>  move |msg| {
+        receiver.attach(None,glib::clone!(@strong ui, @strong application =>  move |msg| {
             match msg {
                 Msg::InstallStarted => {
                     ui.install_progress.set_fraction(0.1428);
-                    let buffer = ui.install_textview.get_buffer().unwrap();
-                    let mut iter = buffer.get_end_iter();
+                    let buffer = ui.install_textview.buffer().unwrap();
+                    let mut iter = buffer.end_iter();
                     let text = format!(
                         "+ Installing Citadel to {}. \nFor a full log, consult the systemd journal by running the following command:\n <i>sudo journalctl -u citadel-installer-backend.service</i>\n", 
                         ui.get_install_destination());
@@ -177,41 +179,41 @@ impl Ui {
                 },
                 Msg::LuksSetup(text) => {
                     ui.install_progress.set_fraction(0.1428 * 2.0);
-                    let buffer = ui.install_textview.get_buffer().unwrap();
-                    let mut iter = buffer.get_end_iter();
+                    let buffer = ui.install_textview.buffer().unwrap();
+                    let mut iter = buffer.end_iter();
                     buffer.insert(&mut iter, &text);
                 },
                 Msg::LvmSetup(text) => {
                     ui.install_progress.set_fraction(0.1428 * 3.0);
-                    let buffer = ui.install_textview.get_buffer().unwrap();
-                    let mut iter = buffer.get_end_iter();
+                    let buffer = ui.install_textview.buffer().unwrap();
+                    let mut iter = buffer.end_iter();
                     buffer.insert(&mut iter, &text);
                 },
                 Msg::BootSetup(text) => {
                     ui.install_progress.set_fraction(0.1428 * 4.0);
-                    let buffer = ui.install_textview.get_buffer().unwrap();
-                    let mut iter = buffer.get_end_iter();
+                    let buffer = ui.install_textview.buffer().unwrap();
+                    let mut iter = buffer.end_iter();
                     buffer.insert(&mut iter, &text);
                 },
                 Msg::StorageCreated(text) => {
                     ui.install_progress.set_fraction(0.1428 * 5.0);
-                    let buffer = ui.install_textview.get_buffer().unwrap();
-                    let mut iter = buffer.get_end_iter();
+                    let buffer = ui.install_textview.buffer().unwrap();
+                    let mut iter = buffer.end_iter();
                     buffer.insert(&mut iter, &text);
                 },
                 Msg::RootfsInstalled(text) => {
                     ui.install_progress.set_fraction(0.1428 * 6.0);
-                    let buffer = ui.install_textview.get_buffer().unwrap();
-                    let mut iter = buffer.get_end_iter();
+                    let buffer = ui.install_textview.buffer().unwrap();
+                    let mut iter = buffer.end_iter();
                     buffer.insert(&mut iter, &text);
                 },
                 Msg::InstallCompleted => {
                     ui.install_progress.set_fraction(1.0);
-                    let buffer = ui.install_textview.get_buffer().unwrap();
-                    let mut iter = buffer.get_end_iter();
+                    let buffer = ui.install_textview.buffer().unwrap();
+                    let mut iter = buffer.end_iter();
                     buffer.insert(&mut iter, "+ Completed the installation successfully\n");
                     let quit_button = gtk::Button::with_label("Quit");
-                    quit_button.connect_clicked(clone!(@strong application => move |_| {
+                    quit_button.connect_clicked(glib::clone!(@strong application => move |_| {
                         application.quit();
                     }));
                     quit_button.set_sensitive(true);
@@ -220,12 +222,12 @@ impl Ui {
                 },
                 Msg::InstallFailed(error) => {
                     ui.install_progress.set_fraction(100.0);
-                    let buffer = ui.install_textview.get_buffer().unwrap();
-                    let mut iter = buffer.get_end_iter();
+                    let buffer = ui.install_textview.buffer().unwrap();
+                    let mut iter = buffer.end_iter();
                     let text = format!("+ Install failed with error:\n<i>{}</i>\n", error);
                     buffer.insert_markup(&mut iter, &text);
                     let quit_button = gtk::Button::with_label("Quit");
-                    quit_button.connect_clicked(clone!(@strong application => move |_| {
+                    quit_button.connect_clicked(glib::clone!(@strong application => move |_| {
                         application.quit();
                     }));
                     quit_button.set_sensitive(true);
@@ -270,9 +272,9 @@ impl Ui {
     pub fn setup_entry_signals(&self, page: &gtk::Box, first_entry: &gtk::Entry, second_entry: &gtk::Entry, status_label: &gtk::Label) {
         let ui = self.clone();
         let assistant = ui.assistant.clone();
-        first_entry.connect_changed(clone!(@weak assistant, @weak page, @weak second_entry, @weak status_label => move |entry| {
-            let password = entry.get_text();
-            let confirm = second_entry.get_text();
+        first_entry.connect_changed(glib::clone!(@weak assistant, @weak page, @weak second_entry, @weak status_label => move |entry| {
+            let password = entry.text();
+            let confirm = second_entry.text();
             if password != "" && confirm != "" {
                 let matches = password == confirm;
                 if !matches {
@@ -283,15 +285,15 @@ impl Ui {
                 assistant.set_page_complete(&page, matches);
             }
         }));
-        first_entry.connect_activate(clone!(@weak second_entry => move |_| {
+        first_entry.connect_activate(glib::clone!(@weak second_entry => move |_| {
             second_entry.grab_focus();
         }));
     }
 
     pub fn setup_prepare_signal(&self) {
         let ui = self.clone();
-        ui.assistant.connect_prepare(clone!(@strong ui => move |assistant, page| {
-            let page_type = assistant.get_page_type(page);
+        ui.assistant.connect_prepare(glib::clone!(@strong ui => move |assistant, page| {
+            let page_type = assistant.page_type(page);
             if page_type == gtk::AssistantPageType::Confirm {
                 let path = ui.get_install_destination();
                 let text = format!("<i>{}</i>", path);
@@ -302,7 +304,7 @@ impl Ui {
 
     pub fn setup_apply_signal(&self) {
         let ui = self.clone();
-        ui.assistant.connect_apply(clone!(@strong ui => move |_| {
+        ui.assistant.connect_apply(glib::clone!(@strong ui => move |_| {
             let citadel_password = ui.get_citadel_password();
             let luks_password = ui.get_luks_password();
             let destination = ui.get_install_destination();
@@ -318,9 +320,9 @@ impl Ui {
     pub fn setup_autoscroll_signal(&self) {
         let ui = self.clone();
         let scrolled_window = ui.install_scrolled_window;
-        ui.install_textview.connect_size_allocate(clone!(@weak scrolled_window => move |_, _| {
-            let adjustment = scrolled_window.get_vadjustment().unwrap();
-            adjustment.set_value(adjustment.get_upper() - adjustment.get_page_size());
+        ui.install_textview.connect_size_allocate(glib::clone!(@weak scrolled_window => move |_, _| {
+            let adjustment = scrolled_window.vadjustment();
+            adjustment.set_value(adjustment.upper() - adjustment.page_size());
         }));
     }
 
@@ -346,63 +348,62 @@ impl Ui {
             println!("Error parsing CSS style: {}", err);
             return;
         }
-        if let Some(screen) = gdk::Screen::get_default() {
+        if let Some(screen) = gdk::Screen::default() {
             gtk::StyleContext::add_provider_for_screen(&screen, &css, gtk::STYLE_PROVIDER_PRIORITY_USER);
         }
     }
 
     pub fn get_citadel_password(&self) -> String {
         let ui = self.clone();
-        let password = ui.citadel_password_entry.get_text();
+        let password = ui.citadel_password_entry.text();
         password.to_string()
     }
     
     pub fn get_luks_password(&self) -> String {
         let ui = self.clone();
-        let password = ui.luks_password_entry.get_text();
+        let password = ui.luks_password_entry.text();
         password.to_string()
     }
 
     pub fn get_install_destination(&self) -> String {
         let ui = self.clone();
-        let model = ui.disks_model;
-        if let Some(row) = ui.disks_listbox.get_selected_row() {
-            let index = row.get_index() as u32;
-            let data = model.get_object(index).unwrap(); 
-            let data = data.downcast_ref::<RowData>().expect("Row data is of wrong type");
-            // TODO: Fix unwrap
-            let path: String = data.get_property("path").unwrap().get().unwrap().unwrap();
-            return path.to_string();
+        if let Some(row) = ui.disks_listbox.selected_row() {
+            let index = row.index() as usize;
+            if ui.disk_rows.len() > index {
+                let data = &ui.disk_rows[index];
+                let path: String = data.property("path").unwrap().get::<String>().unwrap();
+                return path.to_string();
+            }
         }
         "".to_string()
     }
     fn setup_signal_matchers(&self, proxy: Proxy<&Connection>) {
         let sender = self.sender.clone();
-        let _ = proxy.match_signal(clone!(@strong sender => move |_: ComSubgraphInstallerManagerInstallCompleted, _: &Connection, _: &Message| {
+        let _ = proxy.match_signal(glib::clone!(@strong sender => move |_: ComSubgraphInstallerManagerInstallCompleted, _: &Connection, _: &Message| {
             let _ = sender.send(Msg::InstallCompleted);
             true
         }));
-        let _ = proxy.match_signal(clone!(@strong sender => move |h: ComSubgraphInstallerManagerLvmSetup, _: &Connection, _: &Message| {
+        let _ = proxy.match_signal(glib::clone!(@strong sender => move |h: ComSubgraphInstallerManagerLvmSetup, _: &Connection, _: &Message| {
             let _ = sender.send(Msg::LvmSetup(h.text));
             true
         }));
-        let _ = proxy.match_signal(clone!(@strong sender => move |h: ComSubgraphInstallerManagerLuksSetup, _: &Connection, _: &Message| {
+        let _ = proxy.match_signal(glib::clone!(@strong sender => move |h: ComSubgraphInstallerManagerLuksSetup, _: &Connection, _: &Message| {
             let _ = sender.send(Msg::LuksSetup(h.text));
             true
         }));
-        let _ = proxy.match_signal(clone!(@strong sender => move |h: ComSubgraphInstallerManagerBootSetup, _: &Connection, _: &Message| {
+        let _ = proxy.match_signal(glib::clone!(@strong sender => move |h: ComSubgraphInstallerManagerBootSetup, _: &Connection, _: &Message| {
             let _ = sender.send(Msg::BootSetup(h.text));
             true
         }));
-        let _ = proxy.match_signal(clone!(@strong sender => move |h: ComSubgraphInstallerManagerStorageCreated, _: &Connection, _: &Message| {
+        let _ = proxy.match_signal(glib::clone!(@strong sender => move |h: ComSubgraphInstallerManagerStorageCreated, _: &Connection, _: &Message| {
             let _ = sender.send(Msg::StorageCreated(h.text));
             true
         }));
-        let _ = proxy.match_signal(clone!(@strong sender => move |h: ComSubgraphInstallerManagerRootfsInstalled, _: &Connection, _: &Message| {
+        let _ = proxy.match_signal(glib::clone!(@strong sender => move |h: ComSubgraphInstallerManagerRootfsInstalled, _: &Connection, _: &Message| {
             let _ = sender.send(Msg::RootfsInstalled(h.text));
             true
         }));
-        let _ = proxy.match_signal(clone!(@strong sender => move |h: ComSubgraphInstallerManagerInstallFailed, _: &Connection, _: &Message| {
+        let _ = proxy.match_signal(glib::clone!(@strong sender => move |h: ComSubgraphInstallerManagerInstallFailed, _: &Connection, _: &Message| {
             let _ = sender.send(Msg::InstallFailed(h.text));
             true
         }));
