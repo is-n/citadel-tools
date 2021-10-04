@@ -534,7 +534,11 @@ impl Installer {
     }
 
     fn target_partition(&self, num: usize) -> String {
-        format!("{}{}", self.target().display(), num)
+        if self.target_str().starts_with("/dev/nvme") {
+            format!("{}p{}", self.target().display(), num)
+        } else {
+            format!("{}{}", self.target().display(), num)
+        }
     }
 
     fn artifact_path(&self, filename: &str) -> PathBuf {
