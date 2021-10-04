@@ -3,6 +3,7 @@ use sodiumoxide::crypto::sign::{self,Seed,SEEDBYTES,PUBLICKEYBYTES};
 use hex;
 
 use crate::Result;
+use std::convert::TryFrom;
 
 ///
 /// Keys for signing or verifying signatures.  Small convenience
@@ -34,7 +35,7 @@ impl PublicKey {
     }
 
     pub fn verify(&self, data: &[u8], signature: &[u8]) -> bool {
-        let sig = sign::Signature::from_slice(signature)
+        let sig = sign::Signature::try_from(signature)
             .expect("Signature::from_slice() failed");
         sign::verify_detached(&sig, data, &self.0)
     }
@@ -85,7 +86,7 @@ impl KeyPair {
 
 impl Signature {
     pub fn to_bytes(&self) -> &[u8] {
-        &(self.0).0
+        self.0.as_ref()
     }
 }
 
