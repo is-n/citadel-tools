@@ -61,6 +61,8 @@ impl CommandLine {
 
     pub fn overlay() -> bool { Self::var_exists("citadel.overlay") }
 
+    pub fn revert_rootfs() -> bool { Self::var_exists("citadel.revert-rootfs") }
+
     /// Return `true` if sealed realmfs images are enabled on kernel command line
     pub fn sealed() -> bool { Self::var_exists("citadel.sealed") }
 

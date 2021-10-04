@@ -5,7 +5,7 @@ use libcitadel::{BlockDev, ResourceImage, CommandLine, ImageHeader, Partition, R
 use libcitadel::verity::Verity;
 
 pub fn setup_rootfs() -> Result<()> {
-    let mut p = choose_boot_partiton(true)?;
+    let mut p = choose_boot_partiton(true, CommandLine::revert_rootfs())?;
     if CommandLine::noverity() {
         setup_partition_unverified(&p)
     } else {
@@ -75,7 +75,26 @@ fn setup_linear_mapping(blockdev: &Path) -> Result<()> {
     Ok(())
 }
 
-fn choose_boot_partiton(scan: bool) -> Result<Partition> {
+fn is_revertible_partition(best: &Option<Partition>, partition: &Partition) -> bool {
+    if !is_bootable(partition) {
+        return false;
+    }
+    match best {
+        Some(p) => p.path() != partition.path(),
+        None => true,
+    }
+}
+
+fn choose_revert_partition(best: Option<Partition>) -> Option<Partition> {
+    for p in Partition::rootfs_partitions().unwrap_or(Vec::new()) {
+        if is_revertible_partition(&best, &p) {
+            return Some(p);
+        }
+    }
+    best
+}
+
+fn choose_boot_partiton(scan: bool, revert_rootfs: bool) -> Result<Partition> {
     let mut partitions = Partition::rootfs_partitions()?;
 
     if scan {
@@ -88,6 +107,11 @@ fn choose_boot_partiton(scan: bool) -> Result<Partition> {
     for p in partitions {
         best = compare_boot_partitions(best, p);
     }
+
+    if revert_rootfs {
+        best = choose_revert_partition(best);
+    }
+
     best.ok_or_else(|| format_err!("No partition found to boot from").into())
 }
 
