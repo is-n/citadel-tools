@@ -4,5 +4,5 @@ StartLimitIntervalSec=0
 
 [Service]
 Type=oneshot
-ExecStart=/usr/libexec/citadel-desktop-sync --clear
+ExecStart=/usr/libexec/citadel-desktop-sync --all
 ExecStart=/usr/bin/systemctl restart citadel-desktop-watcher.path

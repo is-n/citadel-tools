@@ -4,4 +4,4 @@ StartLimitIntervalSec=0
 
 [Service]
 Type=oneshot
-ExecStart=/usr/libexec/citadel-desktop-sync
+ExecStart=/usr/libexec/citadel-desktop-sync --all

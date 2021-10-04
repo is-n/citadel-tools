@@ -3,7 +3,7 @@ use std::fs::File;
 use std::path::Path;
 use std::collections::HashMap;
 
-use libcitadel::Result;
+use libcitadel::{Result, Realm};
 use std::io;
 
 
@@ -19,8 +19,13 @@ pub struct DesktopFile {
 
 impl DesktopFile {
 
-    pub fn write_to_dir<P: AsRef<Path>>(&self, directory: P) -> Result<()> {
-        let path = directory.as_ref().join(&self.filename);
+    pub fn write_to_dir<P: AsRef<Path>>(&self, directory: P, realm: Option<&Realm>) -> Result<()> {
+        let path = if let Some(r) = realm {
+            directory.as_ref().join(format!("realm-{}.{}", r.name(), self.filename))
+        } else {
+            directory.as_ref().join(&self.filename)
+        };
+
         let f = File::create(&path)
             .map_err(context!("failed to open desktop file {:?}", path))?;
         self.write_to(f)

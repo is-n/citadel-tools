@@ -1,11 +1,12 @@
 use crate::sync::icon_cache::IconCache;
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use libcitadel::{Result, Realms, util};
+use libcitadel::{Result, util, Realm};
 use std::cell::{RefCell, Cell};
 
 pub struct IconSync {
+    realm_base: PathBuf,
     cache: IconCache,
     known: RefCell<HashSet<String>>,
     known_changed: Cell<bool>,
@@ -16,12 +17,13 @@ impl IconSync {
     const KNOWN_ICONS_FILE: &'static str = "/home/citadel/.local/share/icons/known.cache";
     const PAPER_ICON_CACHE: &'static str = "/usr/share/icons/Paper/icon-theme.cache";
 
-    pub fn new() -> Result<Self> {
+    pub fn new(realm: &Realm) -> Result<Self> {
+        let realm_base= realm.base_path();
         let cache = IconCache::open(Self::PAPER_ICON_CACHE)?;
         let known = Self::read_known_cache()?;
         let known = RefCell::new(known);
         let known_changed = Cell::new(false);
-        Ok(IconSync { cache, known, known_changed })
+        Ok(IconSync { realm_base, cache, known, known_changed })
     }
 
     pub fn sync_icon(&self, icon_name: &str) -> Result<()> {
@@ -56,6 +58,7 @@ impl IconSync {
         let mut names: Vec<String> = self.known.borrow().iter().map(|s| s.to_string()).collect();
         names.sort_unstable();
         let out = names.join("\n") + "\n";
+        util::create_dir(Self::CITADEL_ICONS)?;
         util::write_file(Self::KNOWN_ICONS_FILE, out)?;
         Ok(())
     }
@@ -71,7 +74,7 @@ impl IconSync {
     }
 
     fn search(&self, subdir: impl AsRef<Path>, icon_name: &str) -> Result<bool> {
-        let base = Realms::current_realm_symlink().join(subdir.as_ref());
+        let base = self.realm_base.join(subdir.as_ref());
         if !base.exists() {
             return Ok(false)
         }

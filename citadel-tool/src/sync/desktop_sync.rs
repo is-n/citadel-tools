@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::ffi::{OsStr,OsString};
+use std::ffi::OsStr;
 use std::path::{Path,PathBuf};
 use std::time::SystemTime;
 
@@ -44,6 +44,15 @@ impl DesktopItem {
 impl DesktopFileSync {
     pub const CITADEL_APPLICATIONS: &'static str = "/home/citadel/.local/share/applications";
 
+    pub fn sync_active_realms() -> Result<()> {
+        let realms = Realms::load()?;
+        for realm in realms.active(true) {
+            let mut sync = DesktopFileSync::new(realm);
+            sync.run_sync(false)?;
+        }
+        Ok(())
+    }
+
     pub fn new_current() -> Option<Self> {
         Realms::load_current_realm()
             .filter(|r| r.is_active())
@@ -51,7 +60,7 @@ impl DesktopFileSync {
     }
 
     pub fn new(realm: Realm) -> Self {
-        let icons = match IconSync::new() {
+        let icons = match IconSync::new(&realm) {
             Ok(icons) => Some(icons),
             Err(e) => {
                 warn!("Error creating IconSync: {}", e);
@@ -111,11 +120,14 @@ impl DesktopFileSync {
 
     fn remove_missing_target_files(&mut self) -> Result<()> {
         let sources = self.source_filenames();
+        let prefix = format!("realm-{}.", self.realm.name());
         util::read_directory(Self::CITADEL_APPLICATIONS, |dent| {
-            if !sources.contains(&dent.file_name()) {
-                let path = dent.path();
-                verbose!("Removing desktop entry that no longer exists: {:?}", path);
-                util::remove_file(path)?;
+            if let Some(filename) = dent.file_name().to_str() {
+                if filename.starts_with(&prefix) && !sources.contains(filename) {
+                    let path = dent.path();
+                    verbose!("Removing desktop entry that no longer exists: {:?}", path);
+                    util::remove_file(path)?;
+                }
             }
             Ok(())
         })
@@ -125,10 +137,15 @@ impl DesktopFileSync {
         path.metadata().and_then(|meta| meta.modified()).ok()
     }
 
-    fn source_filenames(&self) -> HashSet<OsString> {
+    fn item_realm_filename(&self, item: &DesktopItem) -> Option<String> {
+        item.path.file_name().map(|s| {
+            format!("realm-{}.{}", self.realm.name(), s.to_string_lossy())
+        })
+    }
+
+    fn source_filenames(&self) -> HashSet<String> {
         self.items.iter()
-            .flat_map(|item| item.path.file_name())
-            .map(|s| s.to_os_string())
+            .flat_map(|item| self.item_realm_filename(item))
             .collect()
     }
 
@@ -137,7 +154,7 @@ impl DesktopFileSync {
             let target = Path::new(Self::CITADEL_APPLICATIONS).join(item.filename());
             if item.is_newer_than(&target) {
                 if let Err(e) = self.sync_item(item) {
-                    warn!("Error synchronzing desktop file {:?} from realm-{}: {}", item.filename(), self.realm.name(), e);
+                    warn!("Error synchronizing desktop file {:?} from realm-{}: {}", item.filename(), self.realm.name(), e);
                 }
             }
         }
@@ -147,7 +164,7 @@ impl DesktopFileSync {
     fn sync_item(&self, item: &DesktopItem) -> Result<()> {
         let dfp = DesktopFileParser::parse_from_path(&item.path, "/usr/libexec/citadel-run ")?;
         if dfp.is_showable() {
-            dfp.write_to_dir(Self::CITADEL_APPLICATIONS)?;
+            dfp.write_to_dir(Self::CITADEL_APPLICATIONS, Some(&self.realm))?;
             if let Some(icon_name)= dfp.icon() {
                 if let Some(ref icons) = self.icons {
                     icons.sync_icon(icon_name)?;
