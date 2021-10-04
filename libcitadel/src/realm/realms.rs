@@ -85,7 +85,6 @@ impl Realms {
         Ok( Realms { realms, manager, last_current: None })
     }
 
-
     fn all_realms(mark_active: bool) -> Result<Vec<Realm>> {
         let mut v = Vec::new();
         util::read_directory(Realms::BASE_PATH, |dent| {
@@ -271,7 +270,6 @@ impl Realms {
 
     pub fn set_realm_current(&mut self, realm: &Realm) -> Result<()> {
         symlink::write(realm.run_path(), Self::current_realm_symlink(), true)?;
-        self.last_current = Some(realm.clone());
         Ok(())
     }
 
