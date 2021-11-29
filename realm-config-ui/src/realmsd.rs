@@ -142,12 +142,13 @@ impl RealmsManagerProxy<'_> {
     }
 
     pub fn create_new_realm(&self, realm: &str, config: Vec<(String, String)>) -> Result<()> {
-        if self.create_realm(realm)? && !config.is_empty() {
-            self.realm_set_config(realm, config)?;
+        if self.create_realm(realm)? {
+            if !config.is_empty() {
+                self.realm_set_config(realm, config)?;
+            }
         } else {
             return Err(Error::CreateRealmFailed);
         }
-
         Ok(())
     }
 }
