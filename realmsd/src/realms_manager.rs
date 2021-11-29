@@ -58,7 +58,7 @@ fn configure_realm_boolean_config(realm: &Realm, variable: &str, value: &str) {
     save_config(realm);
 }
 
-fn configure_realm(realm: &Realm, variable: &str, value: &str) {
+fn configure_realm(manager: &RealmManager, realm: &Realm, variable: &str, value: &str) {
     if is_bool_config_variable(variable) {
         configure_realm_boolean_config(realm, variable, value);
     } else if variable == "overlay" {
@@ -72,9 +72,16 @@ fn configure_realm(realm: &Realm, variable: &str, value: &str) {
             return;
         }
     } else if variable == "terminal-scheme" {
-        if Base16Scheme::by_name(value).is_none() {
-            warn!("No terminal color scheme with name '{}' available", value);
-        }
+        match Base16Scheme::by_name(value) {
+            Some(scheme) => if let Err(err) = scheme.apply_to_realm(manager, realm) {
+                    warn!("Error applying terminal color scheme '{}' to realm-{}: {}", value, realm.name(), err);
+                    return;
+                },
+            None => {
+                warn!("No terminal color scheme with name '{}' available", value);
+                return;
+            },
+        };
         realm.with_mut_config(|c| {
             c.terminal_scheme = Some(value.to_string());
         });
@@ -241,7 +248,7 @@ impl RealmsManagerServer {
         };
 
         for var in &vars {
-            configure_realm(&realm, &var.0, &var.1);
+            configure_realm(&self.manager, &realm, &var.0, &var.1);
         }
     }
 
