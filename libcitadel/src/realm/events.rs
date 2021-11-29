@@ -59,7 +59,7 @@ impl Inner {
         self.manager = Arc::downgrade(manager);
     }
 
-    pub fn add_handler<F>(&mut self, handler: F)
+    fn add_handler<F>(&mut self, handler: F)
         where F: Fn(&RealmEvent),
               F: 'static + Send + Sync
     {
@@ -107,6 +107,12 @@ impl RealmEventListener {
 
     fn set_running(&self, val: bool) -> bool {
         self.running.swap(val, Ordering::SeqCst)
+    }
+
+    pub fn send_event(&self, event: RealmEvent) {
+        if self.is_running() {
+            self.inner().send_event(event);
+        }
     }
 
     pub fn add_handler<F>(&self, handler: F)

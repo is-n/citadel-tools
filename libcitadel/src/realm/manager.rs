@@ -356,7 +356,9 @@ impl RealmManager {
     }
 
     pub fn new_realm(&self, name: &str) -> Result<Realm> {
-        self.inner_mut().realms.create_realm(name)
+        let realm = self.inner_mut().realms.create_realm(name)?;
+        self.inner().events.send_event(RealmEvent::New(realm.clone()));
+        Ok(realm)
     }
 
     pub fn delete_realm(&self, realm: &Realm, save_home: bool) -> Result<()> {
