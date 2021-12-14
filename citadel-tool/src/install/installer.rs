@@ -49,6 +49,7 @@ extra-bindmounts-ro = [ '/usr/share/apt-cacher-ng' ]
 
 const MAIN_CONFIG: &str = "\
 terminal-scheme = '$SCHEME'
+use-media-dir = true
 ";
 
 const MAIN_TERMINAL_SCHEME: &str = "embers";

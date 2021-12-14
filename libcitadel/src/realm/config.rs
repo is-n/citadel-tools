@@ -50,6 +50,9 @@ pub struct RealmConfig {
     #[serde(rename="use-shared-dir")]
     pub use_shared_dir: Option<bool>,
 
+    #[serde(rename="use-media-dir")]
+    pub use_media_dir: Option<bool>,
+
     #[serde(rename="use-ephemeral-home")]
     pub use_ephemeral_home: Option<bool>,
 
@@ -187,6 +190,7 @@ impl RealmConfig {
     pub fn default() -> Self {
         RealmConfig {
             use_shared_dir: Some(true),
+            use_media_dir: Some(false),
             use_ephemeral_home: Some(false),
             use_sound: Some(true),
             use_x11: Some(true),
@@ -217,6 +221,7 @@ impl RealmConfig {
     pub fn empty() -> Self {
         RealmConfig {
             use_shared_dir: None,
+            use_media_dir: None,
             use_ephemeral_home: None,
             use_sound: None,
             use_x11: None,
@@ -270,6 +275,12 @@ impl RealmConfig {
     /// between realms.
     pub fn shared_dir(&self) -> bool {
         self.bool_value(|c| c.use_shared_dir)
+    }
+
+    /// If `true` the mount directory for external storage devices will be bind mounted as /Media
+    ///
+    pub fn media_dir(&self) -> bool {
+        self.bool_value(|c| c.use_media_dir)
     }
 
     /// If `true` the home directory of this realm will be set up in ephemeral mode.

@@ -17,6 +17,7 @@ byteorder = "1"
 bincode = "1.2"
 walkdir = "2"
 dbus = "0.6"
+posix-acl = "1.0.0"
 
 [dependencies.inotify]
 version = "0.8"

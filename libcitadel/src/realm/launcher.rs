@@ -127,6 +127,10 @@ impl <'a> RealmLauncher <'a> {
             writeln!(s, "Bind=/realms/Shared:/home/user/Shared")?;
         }
 
+        if config.media_dir() && Path::new("/run/media/citadel").exists() {
+            writeln!(s, "Bind=/run/media/citadel:/home/user/Media")?;
+        }
+
         for dev in &self.devices {
             writeln!(s, "Bind={}", dev)?;
         }

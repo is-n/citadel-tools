@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use posix_acl::{ACL_EXECUTE, ACL_READ, PosixACL, Qualifier};
 
 use crate::{Mountpoint, Result, Realms, RealmFS, Realm, util};
 use crate::realmfs::realmfs_set::RealmFSSet;
@@ -197,6 +198,18 @@ impl RealmManager {
         Ok(())
     }
 
+    fn ensure_run_media_directory(&self) -> Result<()> {
+        let dir = Path::new("/run/media/citadel");
+        if !dir.exists() {
+            util::create_dir(dir)?;
+            let mut acl = PosixACL::new(0o750);
+            acl.set(Qualifier::User(1000), ACL_READ|ACL_EXECUTE);
+            acl.write_acl(dir)
+                .map_err(context!("Failed writinf ACL to {}", dir.display()))?;
+        }
+        Ok(())
+    }
+
     fn _start_realm(&self, realm: &Realm, starting: &mut HashSet<String>) -> Result<()> {
 
         self.start_realm_dependencies(realm, starting)?;
@@ -211,6 +224,10 @@ impl RealmManager {
         let rootfs = realm.setup_rootfs()?;
 
         realm.update_timestamp()?;
+
+        if realm.config().media_dir() {
+            self.ensure_run_media_directory()?;
+        }
 
         self.systemd.start_realm(realm, &rootfs)?;
 
