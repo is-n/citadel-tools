@@ -14,10 +14,10 @@ pub type Result<T> = result::Result<T,Error>;
 #[macro_export]
 macro_rules! bail {
     ($e:expr) => {
-        return Err($crate::error::Error::message($e));
+        return Err($crate::error::Error::message($e))
     };
     ($fmt:expr, $($arg:tt)*) => {
-        return Err($crate::error::Error::message(format!($fmt, $($arg)*)));
+        return Err($crate::error::Error::message(format!($fmt, $($arg)*)))
     };
 }
 
