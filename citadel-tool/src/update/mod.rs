@@ -3,13 +3,18 @@ use std::path::{Path, PathBuf};
 use libcitadel::{Result, Partition, ResourceImage, ImageHeader, LogLevel, Logger, util};
 use crate::update::kernel::{KernelInstaller, KernelVersion};
 use std::collections::HashSet;
-use std::fs::DirEntry;
+use std::fs::{DirEntry, File};
+use std::io;
+use tempfile::Builder;
 
 mod kernel;
 
 const FLAG_SKIP_SHA: u32 = 0x01;
 const FLAG_NO_PREFER: u32 = 0x02;
 const FLAG_QUIET: u32 = 0x04;
+
+const RESOURCES_DIRECTORY: &str = "/storage/resources";
+const TEMP_DIRECTORY: &str = "/storage/resources/tmp";
 
 pub fn main(args: Vec<String>) {
     let mut args = args.iter().skip(1);
@@ -42,14 +47,14 @@ pub fn main(args: Vec<String>) {
 // Search directory containing installed image files for an
 // image file that has an identical shasum and abort the installation
 // if a duplicate is found.
-fn detect_duplicates(image: &ResourceImage) -> Result<()> {
-    let metainfo = image.metainfo();
+fn detect_duplicates(header: &ImageHeader) -> Result<()> {
+    let metainfo = header.metainfo();
     let channel = metainfo.channel();
     let shasum = metainfo.shasum();
 
     validate_channel_name(&channel)?;
 
-    let resource_dir = Path::new("/storage/resources/")
+    let resource_dir = Path::new(RESOURCES_DIRECTORY)
         .join(channel);
 
     if !resource_dir.exists() {
@@ -57,29 +62,58 @@ fn detect_duplicates(image: &ResourceImage) -> Result<()> {
     }
 
     util::read_directory(&resource_dir, |dent| {
-        match ResourceImage::from_path(dent.path()) {
-            Ok(img) => if img.metainfo().shasum() == shasum {
-                bail!("A duplicate image file with the same shasum already exists at {}", img.path().display());
-            },
-            Err(err) =>  warn!("{}", err),
+        if let Ok(hdr) = ImageHeader::from_file(dent.path()) {
+            if hdr.metainfo().shasum() == shasum {
+                bail!("A duplicate image file with the same shasum already exists at {}", dent.path().display());
+            }
         }
         Ok(())
     })
 }
 
+fn create_tmp_copy(path: &Path) -> Result<PathBuf> {
+    if !Path::new(TEMP_DIRECTORY).exists() {
+        util::create_dir(TEMP_DIRECTORY)?;
+    }
+    let mut tmpfile = Builder::new()
+        .prefix("update-")
+        .suffix(".img")
+        .tempfile_in(TEMP_DIRECTORY)
+        .map_err(context!("Failed to open temporary file in {}", TEMP_DIRECTORY))?;
+
+    let mut src = File::open(path)
+        .map_err(context!("Failed to open image file {}", path.display()))?;
+
+    info!("Copying image to temporary file {}", tmpfile.path().display());
+    io::copy(&mut src, tmpfile.as_file_mut())
+        .map_err(context!("Failed copying image file to temporary file"))?;
+
+    let (_,path) = tmpfile
+        .keep().map_err(context!("Failed to persist temporary file"))?;
+    Ok(path)
+}
+
 fn install_image(path: &Path, flags: u32) -> Result<()> {
-    if !path.exists() {
+    if !path.exists() || path.file_name().is_none() {
         bail!("file path {} does not exist", path.display());
     }
+    if !util::is_euid_root() {
+        bail!("Image updates must be installed by root user");
+    }
 
-    let mut image = ResourceImage::from_path(path)?;
-    detect_duplicates(&image)?;
+    let header = ImageHeader::from_file(path)?;
+    detect_duplicates(&header)?;
+
+    let tmpfile = create_tmp_copy(path)?;
+
+    let mut image = ResourceImage::from_header(header, tmpfile)?;
+
     prepare_image(&image, flags)?;
 
     match image.metainfo().image_type() {
         "kernel" => install_kernel_image(&mut image),
         "extra" => install_extra_image(&image),
-        "rootfs" => install_rootfs_image(&image, flags),
+        "rootfs" =>  install_rootfs_image(&image, flags),
         image_type => bail!("Unknown image type: {}", image_type),
     }
 }
@@ -277,6 +311,7 @@ fn install_rootfs_image(image: &ResourceImage, flags: u32) -> Result<()> {
 
     image.write_to_partition(&partition)?;
     info!("Image written to {:?}", partition.path());
+    util::remove_file(image.path())?;
     Ok(())
 }
 

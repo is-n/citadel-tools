@@ -1,6 +1,5 @@
 use std::fs::{File,DirEntry};
-use std::ffi::OsStr;
-use std::io::{self,Seek,SeekFrom};
+use std::io::{self, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
 use crate::{Result, CommandLine, OsRelease, ImageHeader, MetaInfo, Partition, Mounts, util, LoopDevice};
@@ -73,12 +72,16 @@ impl ResourceImage {
         }
     }
 
+    pub fn from_header<P: AsRef<Path>>(header: ImageHeader, path: P) -> Result<Self> {
+        if !header.is_magic_valid() {
+            bail!("image file {} does not have a valid header", path.as_ref().display());
+        }
+        Ok(Self::new(path.as_ref(), header))
+    }
+
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let header = ImageHeader::from_file(path.as_ref())?;
-        if !header.is_magic_valid() {
-            bail!("image file {:?} does not have a valid header", path.as_ref());
-        }
-        Ok(Self::new(path.as_ref(), header ))
+        Self::from_header(header, path)
     }
 
     pub fn is_valid_image(&self) -> bool {
@@ -103,8 +106,6 @@ impl ResourceImage {
     }
 
     fn new(path: &Path, header: ImageHeader) -> Self {
-        assert_eq!(path.extension(), Some(OsStr::new("img")), "image filename must have .img extension");
-
         ResourceImage {
             path: path.to_owned(),
             header,
@@ -485,15 +486,19 @@ fn maybe_add_dir_entry(entry: &DirEntry,
                        images: &mut Vec<ResourceImage>) -> Result<()> {
 
     let path = entry.path();
-    if Some(OsStr::new("img")) != path.extension() {
-        return Ok(())
-    }
     let meta = entry.metadata()
         .map_err(context!("failed to read metadata for {:?}", entry.path()))?;
-    if meta.len() < ImageHeader::HEADER_SIZE as u64 {
+    if !meta.is_file() || meta.len() < ImageHeader::HEADER_SIZE as u64 {
         return Ok(())
     }
-    let header = ImageHeader::from_file(&path)?;
+    let header = match ImageHeader::from_file(&path) {
+        Ok(header) => header,
+        Err(err) => {
+            warn!("Unable to read image header from directory entry {}: {}", path.display(), err);
+            return Ok(())
+        }
+    };
+
     if !header.is_magic_valid() {
         return Ok(())
     }
