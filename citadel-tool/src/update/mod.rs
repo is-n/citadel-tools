@@ -122,7 +122,7 @@ fn install_image(path: &Path, flags: u32) -> Result<()> {
 // dmverity hash tree.
 fn prepare_image(image: &ResourceImage, flags: u32) -> Result<()> {
     if image.is_compressed() {
-        image.decompress()?;
+        image.decompress(false)?;
     }
 
     if flags & FLAG_SKIP_SHA == 0 {

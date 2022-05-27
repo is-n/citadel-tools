@@ -54,7 +54,7 @@ impl Exec {
             .map_err(context!("failed to execute command {}", self.cmd_name))?;
 
         for line in BufReader::new(result.stderr.as_slice()).lines() {
-            verbose!("  {}", line.unwrap());
+            warn!("  {}", line.unwrap());
         }
         self.check_cmd_status(result.status)
     }

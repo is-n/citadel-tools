@@ -275,7 +275,7 @@ fn decompress(arg_matches: &ArgMatches) -> Result<()> {
     if !img.is_compressed() {
         info!("Image is not compressed, not decompressing.");
     } else {
-        img.decompress()?;
+        img.decompress(false)?;
     }
     Ok(())
 }

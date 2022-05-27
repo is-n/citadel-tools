@@ -23,7 +23,7 @@ pub fn setup_rootfs_resource(rootfs: &ResourceImage) -> Result<()> {
 
 fn setup_resource_unverified(img: &ResourceImage) -> Result<()> {
     if img.is_compressed() {
-        img.decompress()?;
+        img.decompress(false)?;
     }
     let loopdev = LoopDevice::create(img.path(), Some(4096), true)?;
     info!("Loop device created: {}", loopdev);

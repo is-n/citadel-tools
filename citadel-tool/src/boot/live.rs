@@ -20,7 +20,7 @@ pub fn live_rootfs() -> Result<()> {
 }
 
 pub fn live_setup() -> Result<()> {
-    decompress_images()?;
+    decompress_images(true)?;
     info!("Starting live setup");
     let live = Installer::new_livesetup();
     live.run()
@@ -131,14 +131,21 @@ fn find_rootfs_image() -> Result<ResourceImage> {
     bail!("unable to find rootfs resource image in {}", IMAGE_DIRECTORY)
 }
 
-fn decompress_images() -> Result<()> {
+fn decompress_images(sync: bool) -> Result<()> {
     info!("Decompressing images");
     let mut threads = Vec::new();
     util::read_directory("/run/citadel/images", |dent| {
         if dent.path().extension() == Some(OsStr::new("img")) {
             if let Ok(image) = ResourceImage::from_path(&dent.path()) {
                 if image.is_compressed() {
-                    threads.push(decompress_one_image(image));
+                    if sync {
+                        if let Err(err) = decompress_one_image_sync(image) {
+                            warn!("Error: {}", err);
+                        }
+
+                    } else {
+                        threads.push(decompress_one_image(image));
+                    }
                 }
             }
         }
@@ -146,22 +153,28 @@ fn decompress_images() -> Result<()> {
     })?;
 
     for t in threads {
-        t.join().unwrap()?;
+        if let Err(err) = t.join().unwrap() {
+            warn!("Error: {}", err);
+        }
     }
     info!("Finished decompressing images");
     Ok(())
-
 }
 
-fn decompress_one_image(image: ResourceImage) -> JoinHandle<Result<()>> {
-    thread::spawn(move || {
+fn decompress_one_image_sync(image: ResourceImage) -> Result<()> {
         let start = Instant::now();
         info!("Decompressing {}", image.path().display());
-        image.decompress()?;
+        image.decompress(true)
+            .map_err(|e| format_err!("Failed to decompress image file {}: {}", image.path().display(), e))?;
         cmd!("/usr/bin/du", "-h {}", image.path().display())?;
         info!("Decompress {:?} finished in {} seconds",
               image.path().file_name().unwrap(),
               start.elapsed().as_secs());
         Ok(())
+}
+
+fn decompress_one_image(image: ResourceImage) -> JoinHandle<Result<()>> {
+    thread::spawn(move || {
+        decompress_one_image_sync(image)
     })
 }

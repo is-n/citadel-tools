@@ -138,7 +138,7 @@ impl ResourceImage {
         self.header.has_flag(ImageHeader::FLAG_HASH_TREE)
     }
 
-    pub fn decompress(&self) -> Result<()> {
+    pub fn decompress(&self, early_remove: bool) -> Result<()> {
         if !self.is_compressed() {
             return Ok(())
         }
@@ -153,6 +153,10 @@ impl ResourceImage {
             .map_err(context!("error creating temporary file {:?}", xzfile))?;
         io::copy(&mut reader, &mut out)
             .map_err(context!("error copying image file {:?} to temporary file", self.path()))?;
+
+        if early_remove {
+            util::remove_file(self.path())?;
+        }
 
         util::xz_decompress(xzfile)?;
         let tmpfile = self.path.with_extension("tmp");
@@ -218,7 +222,7 @@ impl ResourceImage {
             return Ok(())
         }
         if self.is_compressed() {
-            self.decompress()?;
+            self.decompress(false)?;
         }
         info!("Generating dm-verity hash tree for image {}", self.path.display());
         let verity = self.verity()?;
@@ -239,7 +243,7 @@ impl ResourceImage {
 
     pub fn generate_shasum(&self) -> Result<String> {
         if self.is_compressed() {
-            self.decompress()?;
+            self.decompress(false)?;
         }
         info!("Calculating sha256 of image");
         let output = util::exec_cmdline_pipe_input("sha256sum", "-", self.path(), util::FileRange::Range{offset: 4096, len: self.metainfo().nblocks() * 4096})
@@ -256,7 +260,7 @@ impl ResourceImage {
         info!("loop mounting image to {} (noverity)", self.mount_path().display());
 
         if self.is_compressed() {
-            self.decompress()?;
+            self.decompress(false)?;
         }
 
         let loopdev = LoopDevice::create(self.path(), Some(4096), true)?;
