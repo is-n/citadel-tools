@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 libcitadel = { path = "../libcitadel" }
-zbus = "^2.0.0-beta.5"
+zbus = "=2.0.0-beta.5"
 zvariant = "2.7.0"
 serde = { version = "1.0", features = ["derive"] }
 
