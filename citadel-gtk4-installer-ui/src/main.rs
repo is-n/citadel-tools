@@ -27,10 +27,10 @@ fn main() {
 }
 
 fn build_ui(app: &gtk::Application) {
-    //if !(CommandLine::live_mode() || CommandLine::install_mode()) {
-
     // if the user is running this program on an already installed system
-    if (false) {
+
+    //if !(CommandLine::live_mode() || CommandLine::install_mode()) {
+    if false {
         let window = gtk::ApplicationWindow::new(app);
 
         window.set_title(Some("Citadel Installer"));
@@ -73,18 +73,15 @@ fn build_ui(app: &gtk::Application) {
 
         window.show();
     } else {
-        let ui = Ui::build(app).unwrap();
-        //ui.assistant.show_all();
-        ui.start();
-        // match Ui::build(app) {
-        //     Ok(ui) => {
-        //         //ui.assistant.show_all();
-        //         ui.start();
-        //     }
-        //     Err(err) => {
-        //         println!("Could not start application: {:?}", err);
-        //     }
-        // }
+        match Ui::build(app) {
+            Ok(ui) => {
+                ui.assistant.show();
+                ui.start();
+            }
+            Err(err) => {
+                println!("Could not start application: {:?}", err);
+            }
+        }
     }
     //});
 }

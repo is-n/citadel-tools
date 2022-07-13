@@ -33,6 +33,9 @@ pub enum Msg {
 #[derive(Clone)]
 pub struct Ui {
     pub assistant: gtk::Assistant,
+    pub disks_listbox: gtk::ListBox,
+    pub disks_model: gio::ListStore,
+    pub disk_rows: Vec<RowData>,
     pub citadel_password_page: gtk::Box,
     pub citadel_password_entry: gtk::Entry,
     pub citadel_password_confirm_entry: gtk::Entry,
@@ -41,9 +44,6 @@ pub struct Ui {
     pub luks_password_entry: gtk::Entry,
     pub luks_password_confirm_entry: gtk::Entry,
     pub luks_password_status_label: gtk::Label,
-    pub disks_listbox: gtk::ListBox,
-    pub disks_model: gio::ListStore,
-    pub disk_rows: Vec<RowData>,
     pub confirm_install_label: gtk::Label,
     pub install_page: gtk::Box,
     pub install_progress: gtk::ProgressBar,
@@ -68,36 +68,14 @@ impl Ui {
         }));
         let welcome_builder = Builder::new(WELCOME_UI);
         let welcome_page: gtk::Box = welcome_builder.get_box("welcome_page")?;
-        let citadel_password_builder = Builder::new(CITADEL_PASSWORD_UI);
-        let citadel_password_page: gtk::Box =
-            citadel_password_builder.get_box("citadel_password_page")?;
-        let citadel_password_entry: gtk::Entry =
-            citadel_password_builder.get_entry("citadel_password_entry")?;
-        let citadel_password_confirm_entry: gtk::Entry =
-            citadel_password_builder.get_entry("citadel_password_confirm_entry")?;
-        let citadel_password_status_label: gtk::Label =
-            citadel_password_builder.get_label("citadel_password_status_label")?;
 
-        let luks_password_builder = Builder::new(LUKS_PASSWORD_UI);
-        let luks_password_page: gtk::Box = luks_password_builder.get_box("luks_password_page")?;
-        let luks_password_entry: gtk::Entry =
-            luks_password_builder.get_entry("luks_password_entry")?;
-        let luks_password_confirm_entry: gtk::Entry =
-            luks_password_builder.get_entry("luks_password_confirm_entry")?;
-        let luks_password_status_label: gtk::Label =
-            luks_password_builder.get_label("luks_password_status_label")?;
-
+        // show disks page
         let install_destination_builder = Builder::new(INSTALL_DESTINATION_UI);
         let install_destination_page: gtk::Box =
             install_destination_builder.get_box("install_destination_page")?;
         let disks_listbox =
             install_destination_builder.get_listbox("install_destination_listbox")?;
 
-        let confirm_install_builder = Builder::new(CONFIRM_INSTALL_UI);
-        let confirm_install_page: gtk::Box =
-            confirm_install_builder.get_box("confirm_install_page")?;
-        let confirm_install_label: gtk::Label =
-            confirm_install_builder.get_label("confirm_install_label_3")?;
         let disks_model = gio::ListStore::new(RowData::static_type());
         disks_listbox.bind_model(Some(&disks_model), move |item| {
             let row = gtk::ListBoxRow::new();
@@ -139,10 +117,39 @@ impl Ui {
         });
 
         disks_listbox.connect_row_selected(glib::clone!(@strong assistant, @strong install_destination_page => move |_, listbox_row | {
-            if let Some(_) = listbox_row {
-                assistant.set_page_complete(&install_destination_page, true);
-            }
-        }));
+                if let Some(_) = listbox_row {
+                    assistant.set_page_complete(&install_destination_page, true);
+                }
+            }));
+
+        // show citadel user password page
+        let citadel_password_builder = Builder::new(CITADEL_PASSWORD_UI);
+        let citadel_password_page: gtk::Box =
+            citadel_password_builder.get_box("citadel_password_page")?;
+        let citadel_password_entry: gtk::Entry =
+            citadel_password_builder.get_entry("citadel_password_entry")?;
+        let citadel_password_confirm_entry: gtk::Entry =
+            citadel_password_builder.get_entry("citadel_password_confirm_entry")?;
+        let citadel_password_status_label: gtk::Label =
+            citadel_password_builder.get_label("citadel_password_status_label")?;
+
+        // show hdd encryption password page
+        let luks_password_builder = Builder::new(LUKS_PASSWORD_UI);
+        let luks_password_page: gtk::Box = luks_password_builder.get_box("luks_password_page")?;
+        let luks_password_entry: gtk::Entry =
+            luks_password_builder.get_entry("luks_password_entry")?;
+        let luks_password_confirm_entry: gtk::Entry =
+            luks_password_builder.get_entry("luks_password_confirm_entry")?;
+        let luks_password_status_label: gtk::Label =
+            luks_password_builder.get_label("luks_password_status_label")?;
+
+        // show install confirmation page
+        let confirm_install_builder = Builder::new(CONFIRM_INSTALL_UI);
+        let confirm_install_page: gtk::Box =
+            confirm_install_builder.get_box("confirm_install_page")?;
+        let confirm_install_label: gtk::Label =
+            confirm_install_builder.get_label("confirm_install_label_3")?;
+
         let install_builder = Builder::new(INSTALL_UI);
         let install_page: gtk::Box = install_builder.get_box("install_page")?;
         let install_progress: gtk::ProgressBar =
@@ -150,17 +157,19 @@ impl Ui {
         let install_scrolled_window: gtk::ScrolledWindow =
             install_builder.get_scrolled_window("install_scrolled_window")?;
         let install_textview: gtk::TextView = install_builder.get_textview("install_textview")?;
+
         assistant.append_page(&welcome_page);
         assistant.set_page_type(&welcome_page, gtk::AssistantPageType::Intro);
         assistant.set_page_complete(&welcome_page, true);
+        assistant.append_page(&install_destination_page);
         assistant.append_page(&citadel_password_page);
         assistant.append_page(&luks_password_page);
-        assistant.append_page(&install_destination_page);
         assistant.append_page(&confirm_install_page);
         assistant.set_page_type(&confirm_install_page, gtk::AssistantPageType::Confirm);
         assistant.set_page_complete(&confirm_install_page, true);
         assistant.append_page(&install_page);
         assistant.set_page_type(&install_page, gtk::AssistantPageType::Progress);
+
         let disks_model_clone = disks_model.clone();
         let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
         let ui = Self {
