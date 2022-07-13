@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <object class="GtkBox" id="confirm_install_page">
+    <property name="halign">center</property>
+    <property name="orientation">vertical</property>
+    <child>
+      <object class="GtkBox" id="confirm_install_page_header">
+        <property name="margin_top">24</property>
+        <property name="margin_bottom">40</property>
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkImage" id="confirm_install_page_header_icon">
+            <property name="pixel_size">96</property>
+            <property name="margin_top">24</property>
+            <property name="icon_name">system-os-installer</property>
+            <property name="icon_size">6</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="confirm_install_page_header_label">
+            <property name="label" translatable="1">Install Citadel</property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="GtkBox" id="confirm_install_box">
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkLabel" id="confirm_install_label_1">
+            <property name="label" translatable="1">You are about to install Citadel to the following destination:</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="confirm_install_label_3"/>
+        </child>
+        <child>
+          <object class="GtkLabel" id="confirm_install_label_2">
+            <property name="label" translatable="1">Press the &lt;b&gt;Apply&lt;/b&gt; button to continue with the installation. </property>
+            <property name="use_markup">1</property>
+            <property name="margin_top">20</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

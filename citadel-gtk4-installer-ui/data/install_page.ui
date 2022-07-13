@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <object class="GtkTextBuffer" id="install_textbuffer">
+    <property name="text" translatable="1">
+</property>
+  </object>
+  <object class="GtkBox" id="install_page">
+    <property name="halign">center</property>
+    <property name="margin_top">24</property>
+    <property name="margin_bottom">40</property>
+    <property name="orientation">vertical</property>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="margin_top">24</property>
+        <property name="margin_bottom">96</property>
+        <child>
+          <object class="GtkLabel" id="install_header_label">
+            <property name="margin_top">24</property>
+            <property name="label" translatable="1">Installing Citadel</property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="GtkProgressBar" id="install_progress">
+        <property name="width_request">200</property>
+        <property name="halign">center</property>
+        <property name="margin_bottom">40</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkScrolledWindow" id="install_scrolled_window">
+        <property name="focusable">1</property>
+        <property name="valign">center</property>
+        <property name="hscrollbar_policy">never</property>
+        <property name="min_content_width">200</property>
+        <property name="min_content_height">200</property>
+        <property name="child">
+          <object class="GtkTextView" id="install_textview">
+            <property name="width_request">600</property>
+            <property name="focusable">1</property>
+            <property name="editable">0</property>
+            <property name="wrap_mode">word-char</property>
+            <property name="indent">10</property>
+            <property name="cursor_visible">0</property>
+            <property name="buffer">install_textbuffer</property>
+            <property name="accepts_tab">0</property>
+            <property name="monospace">1</property>
+          </object>
+        </property>
+      </object>
+    </child>
+  </object>
+</interface>
