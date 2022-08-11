@@ -1,0 +1,41 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/com/subgraph/installer">
+  <interface name="com.subgraph.installer.Manager">
+    <method name="GetDisks">
+      <arg name="name" type="a{sas}" direction="in"/>
+    </method>
+    <method name="RunInstall">
+      <arg name="device" type="s" direction="in"/>
+      <arg name="citadel_passphrase" type="s" direction="in"/>
+      <arg name="luks_passphrase" type="s" direction="in"/>
+      <arg name="result" type="b" direction="out"/>
+    </method>
+    <signal name="RunInstallStarted">
+      <arg name="progress_message" type="s"/>
+    </signal>
+    <signal name="LuksSetup">
+      <arg name="progress_message" type="s"/>
+    </signal>
+    <signal name="LvmSetup">
+      <arg name="progress_message" type="s"/>
+    </signal>
+    <signal name="BootSetup">
+      <arg name="progress_message" type="s"/>
+    </signal>
+    <signal name="StorageCreated">
+      <arg name="progress_message" type="s"/>
+    </signal>
+    <signal name="RootfsInstalled">
+      <arg name="progress_message" type="s"/>
+    </signal>
+    <signal name="InstallCompleted"/>
+    <signal name="InstallFailed">
+      <arg name="progress_message" type="s"/>
+    </signal>
+  </interface>
+  <interface name="org.freedesktop.DBus.Introspectable">
+    <method name="Introspect">
+      <arg name="xml_data" type="s" direction="out"/>
+    </method>
+  </interface>
+</node>
