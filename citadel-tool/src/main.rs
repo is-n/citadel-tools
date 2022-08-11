@@ -1,12 +1,15 @@
-#[macro_use] extern crate libcitadel;
-#[macro_use] extern crate serde_derive;
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate libcitadel;
+#[macro_use]
+extern crate serde_derive;
+#[macro_use]
+extern crate lazy_static;
 
+use libcitadel::RealmManager;
 use std::env;
-use std::path::Path;
 use std::ffi::OsStr;
 use std::iter;
-use libcitadel::RealmManager;
+use std::path::Path;
 
 mod boot;
 mod image;
@@ -18,11 +21,16 @@ mod sync;
 mod update;
 
 fn main() {
+    env_logger::init();
+
+    log::debug!("The Citadel daemon has started");
+
+    println!("{:?}", env::current_exe());
     let exe = match env::current_exe() {
         Ok(path) => path,
-        Err(_e) => {
+        Err(_) => {
             return;
-        },
+        }
     };
 
     let args = env::args().collect::<Vec<String>>();
@@ -31,7 +39,7 @@ fn main() {
         boot::main(args);
     } else if exe == Path::new("/usr/libexec/citadel-install") {
         install::main(args);
-    } else if exe == Path::new("/usr/libexec/citadel-install-backend") {
+    } else if true {
         install_backend::main();
     } else if exe == Path::new("/usr/bin/citadel-image") {
         image::main(args);
@@ -54,6 +62,11 @@ fn main() {
 
 fn dispatch_command(args: Vec<String>) {
     if let Some(command) = args.get(1) {
+        log::debug!(
+            "Citadel daemon started with the following command: {}",
+            command
+        );
+
         match command.as_str() {
             "boot" => boot::main(rebuild_args("citadel-boot", args)),
             "install" => install::main(rebuild_args("citadel-install", args)),
@@ -78,7 +91,10 @@ fn rebuild_args(command: &str, args: Vec<String>) -> Vec<String> {
 
 fn do_citadel_run(args: Vec<String>) {
     if let Err(e) = RealmManager::run_in_current(&args[1..], true) {
-        println!("RealmManager::run_in_current({:?}) failed: {}", &args[1..], e);
+        log::error!(
+            "RealmManager::run_in_current({:?}) failed: {}",
+            &args[1..],
+            e
+        );
     }
 }
-

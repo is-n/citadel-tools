@@ -1,13 +1,13 @@
 use std::fs;
 use std::process::exit;
 
-use libcitadel::{Result, ResourceImage, CommandLine, KeyRing, LogLevel, Logger, util};
-use libcitadel::RealmManager;
 use crate::boot::disks::DiskPartition;
+use libcitadel::RealmManager;
+use libcitadel::{util, CommandLine, KeyRing, LogLevel, Logger, ResourceImage, Result};
 use std::path::Path;
 
-mod live;
 mod disks;
+mod live;
 mod rootfs;
 
 pub fn main(args: Vec<String>) {
@@ -30,7 +30,6 @@ pub fn main(args: Vec<String>) {
         exit(1);
     }
 }
-
 
 fn do_rootfs() -> Result<()> {
     if CommandLine::live_mode() || CommandLine::install_mode() {
@@ -64,7 +63,6 @@ fn do_setup() -> Result<()> {
     Ok(())
 }
 
-
 fn mount_overlay() -> Result<()> {
     info!("Creating rootfs overlay");
 
@@ -74,7 +72,10 @@ fn mount_overlay() -> Result<()> {
     cmd!("/usr/bin/mount", "--move /sysroot /rootfs.ro")?;
     info!("Mounting tmpfs on /rootfs.rw");
     util::create_dir("/rootfs.rw")?;
-    cmd!("/usr/bin/mount", "-t tmpfs -orw,noatime,mode=755 rootfs.rw /rootfs.rw")?;
+    cmd!(
+        "/usr/bin/mount",
+        "-t tmpfs -orw,noatime,mode=755 rootfs.rw /rootfs.rw"
+    )?;
     info!("Creating /rootfs.rw/work /rootfs.rw/upperdir");
     util::create_dir("/rootfs.rw/upperdir")?;
     util::create_dir("/rootfs.rw/work")?;
@@ -104,8 +105,15 @@ fn do_boot_automount() -> Result<()> {
     }
 
     let boot_partition = find_boot_partition()?;
-    info!("Creating /boot automount units for boot partition {}", boot_partition);
-    cmd!("/usr/bin/systemd-mount", "-A --timeout-idle-sec=300 {} /boot", boot_partition)
+    info!(
+        "Creating /boot automount units for boot partition {}",
+        boot_partition
+    );
+    cmd!(
+        "/usr/bin/systemd-mount",
+        "-A --timeout-idle-sec=300 {} /boot",
+        boot_partition
+    )
 }
 
 fn find_boot_partition() -> Result<String> {
@@ -130,8 +138,8 @@ fn matches_loader_dev(partition: &DiskPartition, dev: &Option<String>) -> bool {
         match partition.partition_uuid() {
             Err(err) => {
                 warn!("error running lsblk {}", err);
-                return true
-            },
+                return true;
+            }
             Ok(uuid) => return uuid == dev.as_str(),
         }
     }
@@ -146,8 +154,9 @@ fn read_loader_dev_efi_var() -> Result<Option<String>> {
     if efi_var.exists() {
         let s = fs::read(efi_var)
             .map_err(context!("could not read {:?}", efi_var))?
-            .into_iter().skip(4)  // u32 'attribute'
-            .filter(|b| *b != 0)  // string is utf16 ascii
+            .into_iter()
+            .skip(4) // u32 'attribute'
+            .filter(|b| *b != 0) // string is utf16 ascii
             .map(|b| (b as char).to_ascii_lowercase())
             .collect::<String>();
         Ok(Some(s))

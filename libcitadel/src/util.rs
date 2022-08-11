@@ -1,17 +1,17 @@
-use std::path::{Path,PathBuf};
-use std::process::{Command,Stdio};
-use std::os::unix::ffi::OsStrExt;
-use std::os::unix::fs::MetadataExt;
-use std::os::unix::fs as unixfs;
 use std::env;
-use std::fs::{self, File, DirEntry};
 use std::ffi::CString;
-use std::io::{self, Seek, Read, BufReader, SeekFrom};
+use std::fs::{self, DirEntry, File};
+use std::io::{self, BufReader, Read, Seek, SeekFrom};
+use std::os::unix::ffi::OsStrExt;
+use std::os::unix::fs as unixfs;
+use std::os::unix::fs::MetadataExt;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
-use walkdir::WalkDir;
 use libc;
+use walkdir::WalkDir;
 
-use crate::{Result, util};
+use crate::{util, Result};
 
 pub fn is_valid_name(name: &str, maxsize: usize) -> bool {
     name.len() <= maxsize &&
@@ -30,7 +30,7 @@ fn is_ascii(c: char) -> bool {
 
 pub fn is_first_char_alphabetic(s: &str) -> bool {
     if let Some(c) = s.chars().next() {
-        return is_ascii(c) && c.is_alphabetic()
+        return is_ascii(c) && c.is_alphabetic();
     }
     false
 }
@@ -50,9 +50,9 @@ pub fn ensure_command_exists(cmd: &str) -> Result<()> {
     let path = Path::new(cmd);
     if !path.is_absolute() {
         search_path(cmd)?;
-        return Ok(())
+        return Ok(());
     } else if path.exists() {
-        return Ok(())
+        return Ok(());
     }
     bail!("cannot execute '{}': command does not exist", cmd)
 }
@@ -66,28 +66,30 @@ pub fn sha256<P: AsRef<Path>>(path: P) -> Result<String> {
     Ok(v[0].trim().to_owned())
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub enum FileRange {
     All,
     Offset(usize),
-    Range{offset: usize, len: usize},
+    Range { offset: usize, len: usize },
 }
 
 fn ranged_reader<P: AsRef<Path>>(path: P, range: FileRange) -> Result<Box<dyn Read>> {
     let path = path.as_ref();
-    let mut f = File::open(path)
-        .map_err(context!("error opening input file {:?}", path))?;
+    let mut f = File::open(path).map_err(context!("error opening input file {:?}", path))?;
     let offset = match range {
         FileRange::All => 0,
         FileRange::Offset(n) => n,
-        FileRange::Range {offset, .. } => offset,
+        FileRange::Range { offset, .. } => offset,
     };
     if offset > 0 {
-        f.seek(SeekFrom::Start(offset as u64))
-            .map_err(context!("error seeking to offset {} in input file {:?}", offset, path))?;
+        f.seek(SeekFrom::Start(offset as u64)).map_err(context!(
+            "error seeking to offset {} in input file {:?}",
+            offset,
+            path
+        ))?;
     }
     let r = BufReader::new(f);
-    if let FileRange::Range {len, ..} = range {
+    if let FileRange::Range { len, .. } = range {
         Ok(Box::new(r.take(len as u64)))
     } else {
         Ok(Box::new(r))
@@ -97,8 +99,15 @@ fn ranged_reader<P: AsRef<Path>>(path: P, range: FileRange) -> Result<Box<dyn Re
 ///
 /// Execute a command, pipe the contents of a file to stdin, return the output as a `String`
 ///
-pub fn exec_cmdline_pipe_input<S,P>(cmd_path: &str, args: S, input: P, range: FileRange) -> Result<String>
-    where S: AsRef<str>, P: AsRef<Path>
+pub fn exec_cmdline_pipe_input<S, P>(
+    cmd_path: &str,
+    args: S,
+    input: P,
+    range: FileRange,
+) -> Result<String>
+where
+    S: AsRef<str>,
+    P: AsRef<Path>,
 {
     let mut r = ranged_reader(input.as_ref(), range)?;
     ensure_command_exists(cmd_path)?;
@@ -112,17 +121,16 @@ pub fn exec_cmdline_pipe_input<S,P>(cmd_path: &str, args: S, input: P, range: Fi
         .map_err(context!("unable to execute {}", cmd_path))?;
 
     let stdin = child.stdin.as_mut().unwrap();
-    io::copy(&mut r, stdin)
-        .map_err(context!("error copying input to stdin"))?;
-    let output = child.wait_with_output()
+    io::copy(&mut r, stdin).map_err(context!("error copying input to stdin"))?;
+    let output = child
+        .wait_with_output()
         .map_err(context!("error waiting for command {} to exit", cmd_path))?;
     Ok(String::from_utf8(output.stdout).unwrap().trim().to_owned())
 }
 
 pub fn xz_compress<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();
-    cmd!("/usr/bin/xz", "-T0 {}", path.display())
-        .map_err(context!("failed to compress {:?}", path))
+    cmd!("/usr/bin/xz", "-T0 {}", path.display()).map_err(context!("failed to compress {:?}", path))
 }
 
 pub fn xz_decompress<P: AsRef<Path>>(path: P) -> Result<()> {
@@ -131,20 +139,30 @@ pub fn xz_decompress<P: AsRef<Path>>(path: P) -> Result<()> {
         .map_err(context!("failed to decompress {:?}", path))
 }
 
-pub fn mount<P: AsRef<Path>>(source: impl AsRef<str>, target: P, options: Option<&str>) -> Result<()> {
+pub fn mount<P: AsRef<Path>>(
+    source: impl AsRef<str>,
+    target: P,
+    options: Option<&str>,
+) -> Result<()> {
     let source = source.as_ref();
     let target = target.as_ref();
     if let Some(options) = options {
-        cmd!("/usr/bin/mount", "{} {} {}", options, source, target.display())
+        cmd!(
+            "/usr/bin/mount",
+            "{} {} {}",
+            options,
+            source,
+            target.display()
+        )
     } else {
         cmd!("/usr/bin/mount", "{} {}", source, target.display())
-    }.map_err(context!("failed to mount {} to {:?}", source, target))
+    }
+    .map_err(context!("failed to mount {} to {:?}", source, target))
 }
 
 pub fn umount<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();
-    cmd!("/usr/bin/umount", "{}", path.display())
-        .map_err(context!("failed to unmount {:?}", path))
+    cmd!("/usr/bin/umount", "{}", path.display()).map_err(context!("failed to unmount {:?}", path))
 }
 
 pub fn chown_user<P: AsRef<Path>>(path: P) -> Result<()> {
@@ -152,8 +170,7 @@ pub fn chown_user<P: AsRef<Path>>(path: P) -> Result<()> {
 }
 
 pub fn chown(path: &Path, uid: u32, gid: u32) -> Result<()> {
-    let cstr = CString::new(path.as_os_str().as_bytes())
-        .expect("path contains null byte");
+    let cstr = CString::new(path.as_os_str().as_bytes()).expect("path contains null byte");
     unsafe {
         if libc::chown(cstr.as_ptr(), uid, gid) == -1 {
             let err = io::Error::last_os_error();
@@ -171,8 +188,7 @@ pub fn chown(path: &Path, uid: u32, gid: u32) -> Result<()> {
 pub fn rename(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<()> {
     let from = from.as_ref();
     let to = to.as_ref();
-    fs::rename(from, to)
-        .map_err(context!("error renaming {:?} to {:?}", from, to))
+    fs::rename(from, to).map_err(context!("error renaming {:?} to {:?}", from, to))
 }
 
 /// Create a symlink at path `dst` which points to `src`
@@ -183,18 +199,16 @@ pub fn rename(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<()> {
 pub fn symlink(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> Result<()> {
     let src = src.as_ref();
     let dst = dst.as_ref();
-    unixfs::symlink(src, dst)
-        .map_err(context!("failed to create symlink {:?} to {:?}", dst, src))
+    unixfs::symlink(src, dst).map_err(context!("failed to create symlink {:?} to {:?}", dst, src))
 }
 
 /// Read directory `dir` and call closure `f` on each `DirEntry`
 pub fn read_directory<F>(dir: impl AsRef<Path>, mut f: F) -> Result<()>
 where
-    F: FnMut(&DirEntry) -> Result<()>
+    F: FnMut(&DirEntry) -> Result<()>,
 {
     let dir = dir.as_ref();
-    let entries = fs::read_dir(dir)
-        .map_err(context!("failed to read directory {:?}", dir))?;
+    let entries = fs::read_dir(dir).map_err(context!("failed to read directory {:?}", dir))?;
     for dent in entries {
         let dent = dent.map_err(context!("error reading entry from directory {:?}", dir))?;
         f(&dent)?;
@@ -210,8 +224,7 @@ where
 pub fn remove_file(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
     if path.exists() {
-        fs::remove_file(path)
-            .map_err(context!("failed to remove file {:?}", path))?;
+        fs::remove_file(path).map_err(context!("failed to remove file {:?}", path))?;
     }
     Ok(())
 }
@@ -224,8 +237,7 @@ pub fn remove_file(path: impl AsRef<Path>) -> Result<()> {
 pub fn create_dir(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
-        fs::create_dir_all(path)
-            .map_err(context!("failed to create directory {:?}", path))?;
+        fs::create_dir_all(path).map_err(context!("failed to create directory {:?}", path))?;
     }
     Ok(())
 }
@@ -237,8 +249,7 @@ pub fn create_dir(path: impl AsRef<Path>) -> Result<()> {
 ///
 pub fn write_file(path: impl AsRef<Path>, contents: impl AsRef<[u8]>) -> Result<()> {
     let path = path.as_ref();
-    fs::write(path, contents)
-        .map_err(context!("failed to write to file {:?}", path))
+    fs::write(path, contents).map_err(context!("failed to write to file {:?}", path))
 }
 
 /// Read content of file `path` into a `String`
@@ -248,8 +259,7 @@ pub fn write_file(path: impl AsRef<Path>, contents: impl AsRef<[u8]>) -> Result<
 ///
 pub fn read_to_string(path: impl AsRef<Path>) -> Result<String> {
     let path = path.as_ref();
-    fs::read_to_string(path)
-        .map_err(context!("failed to read file {:?}", path))
+    fs::read_to_string(path).map_err(context!("failed to read file {:?}", path))
 }
 
 /// Copy file at path `from` to a new file at path `to`
@@ -260,18 +270,22 @@ pub fn read_to_string(path: impl AsRef<Path>) -> Result<String> {
 pub fn copy_file(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<()> {
     let from = from.as_ref();
     let to = to.as_ref();
-    fs::copy(from, to)
-        .map_err(context!("failed to copy file {:?} to {:?}", from, to))?;
+    fs::copy(from, to).map_err(context!("failed to copy file {:?} to {:?}", from, to))?;
     Ok(())
 }
 
-fn copy_path(from: &Path, to: &Path, chown_to: Option<(u32,u32)>) -> Result<()> {
+fn copy_path(from: &Path, to: &Path, chown_to: Option<(u32, u32)>) -> Result<()> {
     if to.exists() {
-        bail!("destination path {} already exists which is not expected", to.display());
+        bail!(
+            "destination path {} already exists which is not expected",
+            to.display()
+        );
     }
 
-    let meta = from.metadata()
-        .map_err(context!("failed to read metadata from source file {:?}", from))?;
+    let meta = from.metadata().map_err(context!(
+        "failed to read metadata from source file {:?}",
+        from
+    ))?;
 
     if from.is_dir() {
         util::create_dir(to)?;
@@ -279,39 +293,42 @@ fn copy_path(from: &Path, to: &Path, chown_to: Option<(u32,u32)>) -> Result<()> 
         util::copy_file(&from, &to)?;
     }
 
-    if let Some((uid,gid)) = chown_to {
+    if let Some((uid, gid)) = chown_to {
         chown(to, uid, gid)?;
     } else {
         chown(to, meta.uid(), meta.gid())?;
     }
     Ok(())
-
 }
 
 pub fn copy_tree(from_base: &Path, to_base: &Path) -> Result<()> {
     _copy_tree(from_base, to_base, None)
 }
 
-pub fn copy_tree_with_chown(from_base: &Path, to_base: &Path, chown_to: (u32,u32)) -> Result<()> {
+pub fn copy_tree_with_chown(from_base: &Path, to_base: &Path, chown_to: (u32, u32)) -> Result<()> {
     _copy_tree(from_base, to_base, Some(chown_to))
 }
 
-fn _copy_tree(from_base: &Path, to_base: &Path, chown_to: Option<(u32,u32)>) -> Result<()> {
+fn _copy_tree(from_base: &Path, to_base: &Path, chown_to: Option<(u32, u32)>) -> Result<()> {
     for entry in WalkDir::new(from_base) {
         let entry = entry.map_err(|e| format_err!("Error walking directory tree: {}", e))?;
         let path = entry.path();
-        let suffix = path.strip_prefix(from_base)
+        let suffix = path
+            .strip_prefix(from_base)
             .map_err(|_| format_err!("Failed to strip prefix from {:?}", path))?;
         let to = to_base.join(suffix);
         if &to != to_base {
-            copy_path(path, &to, chown_to)
-                .map_err(context!("failed to copy {:?} to {:?}", path, to))?;
+            copy_path(path, &to, chown_to).map_err(context!(
+                "failed to copy {:?} to {:?}",
+                path,
+                to
+            ))?;
         }
     }
     Ok(())
 }
 
-pub fn chown_tree(base: &Path, chown_to: (u32,u32), include_base: bool) -> Result<()> {
+pub fn chown_tree(base: &Path, chown_to: (u32, u32), include_base: bool) -> Result<()> {
     for entry in WalkDir::new(base) {
         let entry = entry.map_err(|e| format_err!("Error reading directory entry: {}", e))?;
         if entry.path() != base || include_base {
@@ -323,7 +340,5 @@ pub fn chown_tree(base: &Path, chown_to: (u32,u32), include_base: bool) -> Resul
 }
 
 pub fn is_euid_root() -> bool {
-    unsafe {
-        libc::geteuid() == 0
-    }
+    unsafe { libc::geteuid() == 0 }
 }

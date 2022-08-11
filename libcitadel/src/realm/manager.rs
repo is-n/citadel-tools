@@ -1,20 +1,15 @@
+use posix_acl::{PosixACL, Qualifier, ACL_EXECUTE, ACL_READ};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use posix_acl::{ACL_EXECUTE, ACL_READ, PosixACL, Qualifier};
 
-use crate::{Mountpoint, Result, Realms, RealmFS, Realm, util};
 use crate::realmfs::realmfs_set::RealmFSSet;
+use crate::{util, Mountpoint, Realm, RealmFS, Realms, Result};
 
-use super::systemd::Systemd;
+use super::events::{RealmEvent, RealmEventListener};
 use super::network::NetworkConfig;
-use super::events::{RealmEventListener, RealmEvent};
+use super::systemd::Systemd;
 use crate::realm::realms::HasCurrentChanged;
-
-pub struct RealmManager {
-    inner: RwLock<Inner>,
-    systemd: Systemd,
-}
 
 struct Inner {
     events: RealmEventListener,
@@ -27,12 +22,20 @@ impl Inner {
         let events = RealmEventListener::new();
         let realms = Realms::load()?;
         let realmfs_set = RealmFSSet::load()?;
-        Ok(Inner { events, realms, realmfs_set })
+        Ok(Inner {
+            events,
+            realms,
+            realmfs_set,
+        })
     }
 }
 
-impl RealmManager {
+pub struct RealmManager {
+    inner: RwLock<Inner>,
+    systemd: Systemd,
+}
 
+impl RealmManager {
     fn create_network_config() -> Result<NetworkConfig> {
         let mut network = NetworkConfig::new();
         network.add_bridge("clear", "172.17.0.0/24")?;
@@ -44,9 +47,9 @@ impl RealmManager {
         let inner = RwLock::new(inner);
 
         let network = Self::create_network_config()?;
-        let systemd =  Systemd::new(network);
+        let systemd = Systemd::new(network);
 
-        let manager = RealmManager{ inner, systemd };
+        let manager = RealmManager { inner, systemd };
         let manager = Arc::new(manager);
 
         manager.set_manager(&manager);
@@ -62,8 +65,9 @@ impl RealmManager {
     }
 
     pub fn add_event_handler<F>(&self, handler: F)
-        where F: Fn(&RealmEvent),
-              F: 'static + Send + Sync
+    where
+        F: Fn(&RealmEvent),
+        F: 'static + Send + Sync,
     {
         self.inner_mut().events.add_handler(handler);
     }
@@ -92,12 +96,21 @@ impl RealmManager {
     pub fn launch_terminal(&self, realm: &Realm) -> Result<()> {
         info!("opening terminal in realm '{}'", realm.name());
         let title_arg = format!("Realm: {}", realm.name());
-        let args = &["/usr/bin/x-terminal-emulator".to_owned(), "--title".to_owned(), title_arg];
+        let args = &[
+            "/usr/bin/x-terminal-emulator".to_owned(),
+            "--title".to_owned(),
+            title_arg,
+        ];
         Systemd::machinectl_shell(realm, args, "user", true, true)?;
         Ok(())
     }
 
-    pub fn run_in_realm<S: AsRef<str>>(&self, realm: &Realm, args: &[S], use_launcher: bool) -> Result<()> {
+    pub fn run_in_realm<S: AsRef<str>>(
+        &self,
+        realm: &Realm,
+        args: &[S],
+        use_launcher: bool,
+    ) -> Result<()> {
         Systemd::machinectl_shell(realm, args, "user", use_launcher, false)
     }
 
@@ -111,10 +124,16 @@ impl RealmManager {
         Systemd::machinectl_shell(&realm, args, "user", use_launcher, false)
     }
 
-    pub fn copy_to_realm<P: AsRef<Path>, Q:AsRef<Path>>(&self, realm: &Realm, from: P, to: Q) -> Result<()> {
+    pub fn copy_to_realm<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        realm: &Realm,
+        from: P,
+        to: Q,
+    ) -> Result<()> {
         let from = from.as_ref().to_string_lossy();
         let to = to.as_ref().to_string_lossy();
-        self.systemd.machinectl_copy_to(realm, from.as_ref(), to.as_ref())
+        self.systemd
+            .machinectl_copy_to(realm, from.as_ref(), to.as_ref())
     }
 
     pub fn realm_list(&self) -> Vec<Realm> {
@@ -149,7 +168,10 @@ impl RealmManager {
     pub fn release_mountpoint(&self, mountpoint: &Mountpoint) {
         info!("releasing mountpoint: {}", mountpoint);
         if !mountpoint.is_valid() {
-            warn!("bad mountpoint {} passed to release_mountpoint()", mountpoint);
+            warn!(
+                "bad mountpoint {} passed to release_mountpoint()",
+                mountpoint
+            );
             return;
         }
         if !self.realmfs_mountpoint_in_use(mountpoint) {
@@ -185,14 +207,19 @@ impl RealmManager {
 
     pub fn start_realm(&self, realm: &Realm) -> Result<()> {
         if realm.is_active() {
-            info!("ignoring start request on already running realm '{}'", realm.name());
+            info!(
+                "ignoring start request on already running realm '{}'",
+                realm.name()
+            );
             return Ok(());
         }
         info!("Starting realm {}", realm.name());
         self._start_realm(realm, &mut HashSet::new())?;
 
         if !Realms::is_some_realm_current() {
-            self.inner_mut().realms.set_realm_current(realm)
+            self.inner_mut()
+                .realms
+                .set_realm_current(realm)
                 .unwrap_or_else(|e| warn!("Failed to set realm as current: {}", e));
         }
         Ok(())
@@ -203,7 +230,7 @@ impl RealmManager {
         if !dir.exists() {
             util::create_dir(dir)?;
             let mut acl = PosixACL::new(0o750);
-            acl.set(Qualifier::User(1000), ACL_READ|ACL_EXECUTE);
+            acl.set(Qualifier::User(1000), ACL_READ | ACL_EXECUTE);
             acl.write_acl(dir)
                 .map_err(context!("Failed writinf ACL to {}", dir.display()))?;
         }
@@ -211,12 +238,14 @@ impl RealmManager {
     }
 
     fn _start_realm(&self, realm: &Realm, starting: &mut HashSet<String>) -> Result<()> {
-
         self.start_realm_dependencies(realm, starting)?;
 
         let home = realm.base_path_file("home");
         if !home.exists() {
-            warn!("No home directory exists at {}, creating an empty directory", home.display());
+            warn!(
+                "No home directory exists at {}, creating an empty directory",
+                home.display()
+            );
             util::create_dir(&home)?;
             util::chown_user(&home)?;
         }
@@ -243,11 +272,16 @@ impl RealmManager {
     fn create_realm_namefile(&self, realm: &Realm) -> Result<()> {
         let namefile = realm.run_path_file("realm-name");
         util::write_file(&namefile, realm.name())?;
-        self.systemd.machinectl_copy_to(realm, &namefile, "/run/realm-name")?;
+        self.systemd
+            .machinectl_copy_to(realm, &namefile, "/run/realm-name")?;
         util::remove_file(&namefile)
     }
 
-    fn start_realm_dependencies(&self, realm: &Realm, starting: &mut HashSet<String>) -> Result<()> {
+    fn start_realm_dependencies(
+        &self,
+        realm: &Realm,
+        starting: &mut HashSet<String>,
+    ) -> Result<()> {
         starting.insert(realm.name().to_string());
 
         for realm_name in realm.config().realm_depends() {
@@ -264,12 +298,24 @@ impl RealmManager {
     }
 
     fn link_wayland_socket(&self, realm: &Realm) -> Result<()> {
-        self.run_in_realm(realm, &["/usr/bin/ln", "-s", "/run/user/host/wayland-0", "/run/user/1000/wayland-0"], false)
+        self.run_in_realm(
+            realm,
+            &[
+                "/usr/bin/ln",
+                "-s",
+                "/run/user/host/wayland-0",
+                "/run/user/1000/wayland-0",
+            ],
+            false,
+        )
     }
 
     pub fn stop_realm(&self, realm: &Realm) -> Result<()> {
         if !realm.is_active() {
-            info!("ignoring stop request on realm '{}' which is not running", realm.name());
+            info!(
+                "ignoring stop request on realm '{}' which is not running",
+                realm.name()
+            );
             return Ok(());
         }
 
@@ -346,9 +392,11 @@ impl RealmManager {
 
         // ensure that /proc/pid/root/run and /proc/pid/root/run/realm-name
         // are not symlinks
-        let run_meta = run.symlink_metadata()
+        let run_meta = run
+            .symlink_metadata()
             .map_err(context!("failed reading symlink metadata {:?}", run))?;
-        let name_meta = realm_name.symlink_metadata()
+        let name_meta = realm_name
+            .symlink_metadata()
             .map_err(context!("failed reading symlink metadata {:?}", realm_name))?;
         if !run_meta.file_type().is_dir() || !name_meta.file_type().is_file() {
             bail!("invalid path");
@@ -356,13 +404,13 @@ impl RealmManager {
         util::read_to_string(&realm_name)
     }
 
-    pub fn rescan_realms(&self) -> Result<(Vec<Realm>,Vec<Realm>)> {
+    pub fn rescan_realms(&self) -> Result<(Vec<Realm>, Vec<Realm>)> {
         self.inner_mut().realms.rescan_realms()
     }
 
     pub fn set_current_realm(&self, realm: &Realm) -> Result<()> {
         if realm.is_current() {
-            return Ok(())
+            return Ok(());
         }
         if !realm.is_active() {
             self.start_realm(realm)?;
@@ -374,7 +422,9 @@ impl RealmManager {
 
     pub fn new_realm(&self, name: &str) -> Result<Realm> {
         let realm = self.inner_mut().realms.create_realm(name)?;
-        self.inner().events.send_event(RealmEvent::New(realm.clone()));
+        self.inner()
+            .events
+            .send_event(RealmEvent::New(realm.clone()));
         Ok(realm)
     }
 
@@ -382,7 +432,9 @@ impl RealmManager {
         if realm.is_active() {
             self.stop_realm(realm)?;
         }
-        self.inner_mut().realms.delete_realm(realm.name(), save_home)
+        self.inner_mut()
+            .realms
+            .delete_realm(realm.name(), save_home)
     }
 
     pub fn realmfs_added(&self, realmfs: &RealmFS) {

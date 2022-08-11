@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{Result, util};
+use crate::{util, Result};
 
 lazy_static! {
     static ref CMDLINE: CommandLine = match CommandLine::load() {
@@ -19,11 +19,10 @@ lazy_static! {
 /// This class is a lazy constructed singleton.
 #[derive(Clone)]
 pub struct CommandLine {
-    varmap: HashMap<String,Option<String>>,
+    varmap: HashMap<String, Option<String>>,
 }
 
 impl CommandLine {
-
     /// Returns true if the variable `name` is present on the kernel command line.
     pub fn var_exists(name: &str) -> bool {
         CMDLINE._var_exists(name)
@@ -59,39 +58,44 @@ impl CommandLine {
         Self::var_exists("citadel.recovery")
     }
 
-    pub fn overlay() -> bool { Self::var_exists("citadel.overlay") }
+    pub fn overlay() -> bool {
+        Self::var_exists("citadel.overlay")
+    }
 
-    pub fn revert_rootfs() -> bool { Self::var_exists("citadel.revert-rootfs") }
+    pub fn revert_rootfs() -> bool {
+        Self::var_exists("citadel.revert-rootfs")
+    }
 
     /// Return `true` if sealed realmfs images are enabled on kernel command line
-    pub fn sealed() -> bool { Self::var_exists("citadel.sealed") }
+    pub fn sealed() -> bool {
+        Self::var_exists("citadel.sealed")
+    }
 
     pub fn channel() -> Option<&'static str> {
         Self::get_value("citadel.channel")
     }
 
-    fn _channel() -> Option<(&'static str,Option<&'static str>)> {
+    fn _channel() -> Option<(&'static str, Option<&'static str>)> {
         if let Some(channel) = Self::channel() {
             let parts = channel.splitn(2, ':').collect::<Vec<_>>();
             if parts.len() == 2 {
-                return Some((parts[0], Some(parts[1])))
+                return Some((parts[0], Some(parts[1])));
             }
             return Some((channel, None));
         }
         None
-
     }
 
     pub fn channel_name() -> Option<&'static str> {
         if let Some((name, _)) = Self::_channel() {
-            return Some(name)
+            return Some(name);
         }
         None
     }
 
     pub fn channel_pubkey() -> Option<&'static str> {
         if let Some((_, pubkey)) = Self::_channel() {
-            return pubkey
+            return pubkey;
         }
         None
     }
@@ -104,15 +108,16 @@ impl CommandLine {
         Self::var_exists("citadel.debug")
     }
 
-
     fn new() -> Self {
-        CommandLine{ varmap: HashMap::new() }
+        CommandLine {
+            varmap: HashMap::new(),
+        }
     }
 
     fn load() -> Result<Self> {
         let s = util::read_to_string("/proc/cmdline")?;
         let varmap = CommandLineParser::new(s).parse();
-        Ok(CommandLine{varmap})
+        Ok(CommandLine { varmap })
     }
 
     fn _var_exists(&self, name: &str) -> bool {
@@ -124,7 +129,7 @@ impl CommandLine {
             // 'name' exists
             if let Some(ref v) = *val {
                 // has an associated value (name=value)
-                return Some(v)
+                return Some(v);
             }
         }
         // otherwise None
@@ -139,7 +144,7 @@ enum ParseState {
     // In option name, preceeding '=' char
     Name(String),
     // In value after '=' char
-    Value(String,String),
+    Value(String, String),
     // First char was a '-', expecting double '--'
     InDash,
     // In quoted value, whitespace allowed
@@ -189,56 +194,48 @@ impl CommandLineParser {
         match c {
             ch if ch.is_whitespace() => ParseState::Whitespace,
             ch if ch.is_ascii_alphanumeric() => ParseState::Name(ch.to_string()),
-            _ => {
-                self.unexpected_char(c, "as initial character of option name")
-            }
+            _ => self.unexpected_char(c, "as initial character of option name"),
         }
     }
 
     fn parse_name(&mut self, c: char, mut name: String) -> ParseState {
         match c {
-
             '_' | '-' => {
                 name.push('-');
                 ParseState::Name(name)
-            },
+            }
 
             '=' => ParseState::Value(name, String::new()),
 
             ch if ch.is_whitespace() => {
                 self.varmap.insert(name, None);
                 ParseState::Whitespace
-            },
+            }
 
             ch if ch.is_ascii_alphanumeric() || ch == '.' => {
                 name.push(ch);
                 ParseState::Name(name)
-            },
+            }
 
-            _ => {
-                self.unexpected_char(c, "parsing option name")
-            },
+            _ => self.unexpected_char(c, "parsing option name"),
         }
     }
 
     fn parse_value(&mut self, c: char, name: String, mut value: String) -> ParseState {
         match c {
-
             '"' if value.is_empty() => ParseState::InQuoted(name, value),
 
             ch if ch.is_whitespace() => {
                 self.varmap.insert(name, Some(value));
                 ParseState::Whitespace
-            },
+            }
 
             ch if ch.is_ascii() => {
                 value.push(ch);
                 ParseState::Value(name, value)
-            },
-
-            _ => {
-                self.unexpected_char(c, "parsing option value")
             }
+
+            _ => self.unexpected_char(c, "parsing option value"),
         }
     }
 
@@ -247,7 +244,7 @@ impl CommandLineParser {
         if c.is_whitespace() {
             ParseState::Whitespace
         } else if c == '-' {
-           ParseState::InDash
+            ParseState::InDash
         } else {
             self.unexpected_char(c, "after initial dash character")
         }
@@ -265,7 +262,7 @@ impl CommandLineParser {
     fn parse_quoted_end(&mut self, c: char, name: String, value: String) -> ParseState {
         if c.is_whitespace() {
             self.varmap.insert(name, Some(value));
-            return ParseState::Whitespace
+            return ParseState::Whitespace;
         }
         self.unexpected_char(c, "after closing quote character")
     }
@@ -291,5 +288,3 @@ fn foo() {
     println!("hello");
     println!("cline: {:?}", cline.varmap);
 }
-
-

@@ -1,18 +1,18 @@
+use pwhash::sha512_crypt;
 use std::cell::RefCell;
-use std::fs::{self,File};
-use std::io::{self,Write};
+use std::fs::{self, File};
+use std::io::{self, Write};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
-use pwhash::sha512_crypt;
 
+use libcitadel::terminal::Base16Scheme;
 use libcitadel::util;
+use libcitadel::KeyRing;
+use libcitadel::OsRelease;
 use libcitadel::RealmFS;
 use libcitadel::Result;
-use libcitadel::OsRelease;
-use libcitadel::KeyRing;
-use libcitadel::terminal::Base16Scheme;
 use libcitadel::UtsName;
 
 const LUKS_UUID: &str = "683a17fc-4457-42cc-a946-cde67195a101";
@@ -63,7 +63,7 @@ const PARTITION_COMMANDS: &[&str] = &[
     "/sbin/parted -s $TARGET set 2 lvm on",
 ];
 
-const LUKS_COMMANDS: &[&str] =  &[
+const LUKS_COMMANDS: &[&str] = &[
     "/sbin/cryptsetup -q --uuid=$LUKS_UUID luksFormat $LUKS_PARTITION $LUKS_PASSFILE",
     "/sbin/cryptsetup open --type luks --key-file $LUKS_PASSFILE $LUKS_PARTITION luks-install",
 ];
@@ -130,7 +130,11 @@ pub struct Installer {
 }
 
 impl Installer {
-    pub fn new<P: AsRef<Path>>(target_device: P, citadel_passphrase: &str, passphrase: &str) -> Installer {
+    pub fn new<P: AsRef<Path>>(
+        target_device: P,
+        citadel_passphrase: &str,
+        passphrase: &str,
+    ) -> Installer {
         let target_device = Some(target_device.as_ref().to_owned());
         let citadel_passphrase = Some(citadel_passphrase.to_owned());
         let passphrase = Some(passphrase.to_owned());
@@ -168,7 +172,9 @@ impl Installer {
     }
 
     fn citadel_passphrase(&self) -> &str {
-        self.citadel_passphrase.as_ref().expect("No citadel passphrase")
+        self.citadel_passphrase
+            .as_ref()
+            .expect("No citadel passphrase")
     }
 
     fn passphrase(&self) -> &str {
@@ -187,8 +193,10 @@ impl Installer {
         let kernel_img = self.kernel_imagename();
         let bzimage = format!("bzImage-{}", self.kernel_version());
         let artifacts = vec![
-            "bootx64.efi", bzimage.as_str(),
-            kernel_img.as_str(), EXTRA_IMAGE_NAME,
+            "bootx64.efi",
+            bzimage.as_str(),
+            kernel_img.as_str(),
+            EXTRA_IMAGE_NAME,
         ];
 
         if !self.target().exists() {
@@ -197,7 +205,11 @@ impl Installer {
 
         for a in artifacts {
             if !self.artifact_path(a).exists() {
-                bail!("required install artifact {} does not exist in {}", a, self.artifact_directory);
+                bail!(
+                    "required install artifact {} does not exist in {}",
+                    a,
+                    self.artifact_directory
+                );
             }
         }
 
@@ -220,16 +232,22 @@ impl Installer {
         self.create_storage()?;
         self.install_rootfs_partitions()?;
         self.finish_install()?;
-        self.header(format!("Install completed successfully in {} seconds", start.elapsed().as_secs()))?;
+        self.header(format!(
+            "Install completed successfully in {} seconds",
+            start.elapsed().as_secs()
+        ))?;
         Ok(())
     }
 
     pub fn run_live_setup(&self) -> Result<()> {
-        self.cmd_list(&[
-            "/bin/mount -t tmpfs var-tmpfs /sysroot/var",
-            "/bin/mount -t tmpfs home-tmpfs /sysroot/home",
-            "/bin/mount -t tmpfs storage-tmpfs /sysroot/storage",
-        ], &[])?;
+        self.cmd_list(
+            &[
+                "/bin/mount -t tmpfs var-tmpfs /sysroot/var",
+                "/bin/mount -t tmpfs home-tmpfs /sysroot/home",
+                "/bin/mount -t tmpfs storage-tmpfs /sysroot/storage",
+            ],
+            &[],
+        )?;
 
         util::create_dir("/sysroot/storage/realms")?;
 
@@ -243,14 +261,17 @@ impl Installer {
     }
 
     fn setup_live_realm(&self) -> Result<()> {
-
         let realmfs_dir = self.storage().join("realms/realmfs-images");
         let base_realmfs = realmfs_dir.join("base-realmfs.img");
 
         self.info(format!("creating directory {}", realmfs_dir.display()))?;
         util::create_dir(&realmfs_dir)?;
 
-        self.info(format!("creating symlink {} -> {}", base_realmfs.display(), "/run/citadel/images/base-realmfs.img"))?;
+        self.info(format!(
+            "creating symlink {} -> {}",
+            base_realmfs.display(),
+            "/run/citadel/images/base-realmfs.img"
+        ))?;
         util::symlink("/run/citadel/images/base-realmfs.img", &base_realmfs)?;
 
         let realmfs = RealmFS::load_from_path("/run/citadel/images/base-realmfs.img")?;
@@ -263,9 +284,7 @@ impl Installer {
 
     pub fn partition_disk(&self) -> Result<()> {
         self.header("Partitioning target disk")?;
-        self.cmd_list(PARTITION_COMMANDS, &[
-            ("$TARGET", self.target_str())
-        ])
+        self.cmd_list(PARTITION_COMMANDS, &[("$TARGET", self.target_str())])
     }
 
     pub fn setup_luks(&self) -> Result<()> {
@@ -275,11 +294,14 @@ impl Installer {
 
         let luks_partition = self.target_partition(2);
 
-        self.cmd_list(LUKS_COMMANDS, &[
-            ("$LUKS_UUID", LUKS_UUID),
-            ("$LUKS_PARTITION", &luks_partition),
-            ("$LUKS_PASSFILE", LUKS_PASSPHRASE_FILE),
-        ])?;
+        self.cmd_list(
+            LUKS_COMMANDS,
+            &[
+                ("$LUKS_UUID", LUKS_UUID),
+                ("$LUKS_PARTITION", &luks_partition),
+                ("$LUKS_PASSFILE", LUKS_PASSPHRASE_FILE),
+            ],
+        )?;
 
         util::remove_file(LUKS_PASSPHRASE_FILE)
     }
@@ -303,9 +325,12 @@ impl Installer {
 
         let kernel_version = self.kernel_version();
         self.info("Writing /boot/entries/boot.conf")?;
-        util::write_file(format!("{}/loader/entries/boot.conf", INSTALL_MOUNT), BOOT_CONF
-                      .replace("$KERNEL_CMDLINE", KERNEL_CMDLINE)
-                      .replace("$KERNEL_VERSION", &kernel_version))?;
+        util::write_file(
+            format!("{}/loader/entries/boot.conf", INSTALL_MOUNT),
+            BOOT_CONF
+                .replace("$KERNEL_CMDLINE", KERNEL_CMDLINE)
+                .replace("$KERNEL_VERSION", &kernel_version),
+        )?;
 
         let kernel_bzimage = format!("bzImage-{}", kernel_version);
         self.copy_artifact(&kernel_bzimage, INSTALL_MOUNT)?;
@@ -339,9 +364,12 @@ impl Installer {
 
         let kernel_version = self.kernel_version();
         self.info("Writing syslinux.cfg")?;
-        util::write_file(dst.join("syslinux.cfg"),
-                  SYSLINUX_CONF.replace("$KERNEL_CMDLINE", KERNEL_CMDLINE)
-                  .replace("$KERNEL_VERSION", &kernel_version))?;
+        util::write_file(
+            dst.join("syslinux.cfg"),
+            SYSLINUX_CONF
+                .replace("$KERNEL_CMDLINE", KERNEL_CMDLINE)
+                .replace("$KERNEL_VERSION", &kernel_version),
+        )?;
         self.cmd(format!("/sbin/extlinux --install {}", dst.display()))
     }
 
@@ -350,16 +378,24 @@ impl Installer {
         if !mbrbin.exists() {
             bail!("could not find MBR image: {:?}", mbrbin);
         }
-        self.cmd(format!("/bin/dd bs=440 count=1 conv=notrunc if={} of={}", mbrbin.display(), self.target().display()))?;
-        self.cmd(format!("/sbin/parted -s {} set 1 legacy_boot on", self.target_str()))
-
+        self.cmd(format!(
+            "/bin/dd bs=440 count=1 conv=notrunc if={} of={}",
+            mbrbin.display(),
+            self.target().display()
+        ))?;
+        self.cmd(format!(
+            "/sbin/parted -s {} set 1 legacy_boot on",
+            self.target_str()
+        ))
     }
 
     pub fn create_storage(&self) -> Result<()> {
         self.header("Setting up /storage partition")?;
 
-        self.cmd_list(CREATE_STORAGE_COMMANDS,
-                      &[("$INSTALL_MOUNT", INSTALL_MOUNT)])?;
+        self.cmd_list(
+            CREATE_STORAGE_COMMANDS,
+            &[("$INSTALL_MOUNT", INSTALL_MOUNT)],
+        )?;
 
         self.setup_storage()?;
         self.cmd(format!("/bin/umount {}", INSTALL_MOUNT))
@@ -378,7 +414,10 @@ impl Installer {
         self.setup_citadel_passphrase()?;
 
         self.info("Creating global realm config file")?;
-        util::write_file(self.storage().join("realms/config"), self.global_realm_config())?;
+        util::write_file(
+            self.storage().join("realms/config"),
+            self.global_realm_config(),
+        )?;
 
         self.info("Creating /Shared realms directory")?;
 
@@ -392,21 +431,26 @@ impl Installer {
     fn create_keyring(&self) -> Result<()> {
         self.info("Creating initial keyring")?;
         let keyring = KeyRing::create_new();
-        keyring.write(self.storage().join("keyring"), self.passphrase.as_ref().unwrap())
+        keyring.write(
+            self.storage().join("keyring"),
+            self.passphrase.as_ref().unwrap(),
+        )
     }
-
 
     fn setup_base_realmfs(&self) -> Result<()> {
         let realmfs_dir = self.storage().join("realms/realmfs-images");
         util::create_dir(&realmfs_dir)?;
         self.sparse_copy_artifact("base-realmfs.img", &realmfs_dir)?;
-        self.cmd(format!("/usr/bin/citadel-image decompress {}/base-realmfs.img", realmfs_dir.display()))
+        self.cmd(format!(
+            "/usr/bin/citadel-image decompress {}/base-realmfs.img",
+            realmfs_dir.display()
+        ))
     }
 
     fn setup_realm_skel(&self) -> Result<()> {
         let realm_skel = self.storage().join("realms/skel");
         util::create_dir(&realm_skel)?;
-        util::copy_tree_with_chown(&self.skel(), &realm_skel, (1000,1000))
+        util::copy_tree_with_chown(&self.skel(), &realm_skel, (1000, 1000))
     }
 
     fn create_realmlock(&self, dir: &Path) -> Result<()> {
@@ -430,12 +474,18 @@ impl Installer {
 
         if let Some(scheme) = Base16Scheme::by_name(MAIN_TERMINAL_SCHEME) {
             scheme.write_realm_files(&home)?;
-            util::write_file(realm.join("config"), MAIN_CONFIG.replace("$SCHEME", MAIN_TERMINAL_SCHEME))?;
+            util::write_file(
+                realm.join("config"),
+                MAIN_CONFIG.replace("$SCHEME", MAIN_TERMINAL_SCHEME),
+            )?;
         }
-        util::chown_tree(&home, (1000,1000), false)?;
+        util::chown_tree(&home, (1000, 1000), false)?;
 
         self.info("Creating default.realm symlink")?;
-        util::symlink("/realms/realm-main", self.storage().join("realms/default.realm"))?;
+        util::symlink(
+            "/realms/realm-main",
+            self.storage().join("realms/default.realm"),
+        )?;
 
         self.create_realmlock(&realm)
     }
@@ -485,8 +535,7 @@ impl Installer {
                     util::write_file(self.storage().join("citadel-state/passwd"), contents)?;
                 }
             }
-        }
-        else if self._type == InstallType::Install {
+        } else if self._type == InstallType::Install {
             self.info("Creating citadel passphrase file")?;
             if let Ok(hash) = sha512_crypt::hash(self.citadel_passphrase()) {
                 let contents = format!("citadel:{}\n", hash);
@@ -500,14 +549,18 @@ impl Installer {
     pub fn install_rootfs_partitions(&self) -> Result<()> {
         self.header("Installing rootfs partitions")?;
         let rootfs = self.artifact_path("citadel-rootfs.img");
-        self.cmd(format!("/usr/bin/citadel-image install-rootfs --skip-sha {}", rootfs.display()))?;
-        self.cmd(format!("/usr/bin/citadel-image install-rootfs --skip-sha --no-prefer {}", rootfs.display()))
+        self.cmd(format!(
+            "/usr/bin/citadel-image install-rootfs --skip-sha {}",
+            rootfs.display()
+        ))?;
+        self.cmd(format!(
+            "/usr/bin/citadel-image install-rootfs --skip-sha --no-prefer {}",
+            rootfs.display()
+        ))
     }
 
     pub fn finish_install(&self) -> Result<()> {
-        self.cmd_list(FINISH_COMMANDS, &[
-            ("$TARGET", self.target_str())
-        ])
+        self.cmd_list(FINISH_COMMANDS, &[("$TARGET", self.target_str())])
     }
 
     fn global_realm_config(&self) -> &str {
@@ -517,7 +570,7 @@ impl Installer {
         }
     }
 
-    fn skel(&self) -> &Path{
+    fn skel(&self) -> &Path {
         match self._type {
             InstallType::Install => Path::new("/etc/skel"),
             InstallType::LiveSetup => Path::new("/sysroot/etc/skel"),
@@ -554,14 +607,27 @@ impl Installer {
         self._copy_artifact(filename, target, true)
     }
 
-    fn _copy_artifact<P: AsRef<Path>>(&self, filename: &str, target: P, sparse: bool) -> Result<()> {
-        self.info(format!("Copying {} to {}", filename, target.as_ref().display()))?;
+    fn _copy_artifact<P: AsRef<Path>>(
+        &self,
+        filename: &str,
+        target: P,
+        sparse: bool,
+    ) -> Result<()> {
+        self.info(format!(
+            "Copying {} to {}",
+            filename,
+            target.as_ref().display()
+        ))?;
         let src = self.artifact_path(filename);
         let target = target.as_ref();
         util::create_dir(target)?;
         let dst = target.join(filename);
         if sparse {
-            self.cmd(format!("/bin/cp --sparse=always {} {}", src.display(), dst.display()))?;
+            self.cmd(format!(
+                "/bin/cp --sparse=always {} {}",
+                src.display(),
+                dst.display()
+            ))?;
         } else {
             util::copy_file(src, dst)?;
         }
@@ -576,9 +642,9 @@ impl Installer {
         self.output(format!("    [>] {}", s.as_ref()))
     }
 
-
     fn output<S: AsRef<str>>(&self, s: S) -> Result<()> {
-        self.write_output(s.as_ref()).map_err(context!("error writing output"))
+        self.write_output(s.as_ref())
+            .map_err(context!("error writing output"))
     }
 
     fn write_output(&self, s: &str) -> io::Result<()> {
@@ -592,10 +658,16 @@ impl Installer {
         Ok(())
     }
 
-    fn cmd_list<I: IntoIterator<Item=S>, S: AsRef<str>>(&self, cmd_lines: I, subs: &[(&str,&str)]) -> Result<()> {
+    fn cmd_list<I: IntoIterator<Item = S>, S: AsRef<str>>(
+        &self,
+        cmd_lines: I,
+        subs: &[(&str, &str)],
+    ) -> Result<()> {
         for line in cmd_lines {
             let line = line.as_ref();
-            let line = subs.iter().fold(line.to_string(), |acc, (from,to)| acc.replace(from,to));
+            let line = subs
+                .iter()
+                .fold(line.to_string(), |acc, (from, to)| acc.replace(from, to));
             let args: Vec<&str> = line.split_whitespace().collect::<Vec<_>>();
             self.run_cmd(args, false)?;
         }
@@ -619,7 +691,8 @@ impl Installer {
 
         command.args(&args[1..]);
 
-        let result = command.output()
+        let result = command
+            .output()
             .map_err(context!("error running command {}", args[0]))?;
 
         for line in String::from_utf8_lossy(&result.stdout).lines() {

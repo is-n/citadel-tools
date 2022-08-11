@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use libcitadel::{Result, util};
+use libcitadel::{util, Result};
 
 ///
 /// Represents a disk partition device on the system
@@ -22,8 +22,7 @@ impl DiskPartition {
     pub fn boot_partitions(check_guid: bool) -> Result<Vec<DiskPartition>> {
         let pp = util::read_to_string("/proc/partitions")?;
         let mut v = Vec::new();
-        for line in pp.lines().skip(2)
-        {
+        for line in pp.lines().skip(2) {
             let part = DiskPartition::from_proc_line(&line)
                 .map_err(context!("failed to parse line '{}'", line))?;
 
@@ -55,8 +54,8 @@ impl DiskPartition {
             bail!("could not parse");
         }
         Ok(DiskPartition::from_line_components(
-            v[0].parse::<u16>()?,    // Major
-            v[1].parse::<u16>()?,    // Minor
+            v[0].parse::<u16>()?,   // Major
+            v[1].parse::<u16>()?,   // Minor
             v[2].parse::<usize>()?, // number of blocks
             v[3],
         )) // device name
@@ -88,7 +87,12 @@ impl DiskPartition {
     }
 
     pub fn mount<P: AsRef<Path>>(&self, target: P) -> Result<()> {
-        cmd!("/usr/bin/mount", "{} {}", self.path.display(), target.as_ref().display())
+        cmd!(
+            "/usr/bin/mount",
+            "{} {}",
+            self.path.display(),
+            target.as_ref().display()
+        )
     }
 
     pub fn umount(&self) -> Result<()> {

@@ -1,8 +1,8 @@
 use std::process::exit;
 
-pub(crate) mod installer;
 mod cli;
 mod disk;
+pub(crate) mod installer;
 
 pub fn main(args: Vec<String>) {
     let mut args = args.iter().skip(1);
@@ -17,10 +17,9 @@ pub fn main(args: Vec<String>) {
         Err(ref err) => {
             println!("Install failed: {}", err);
             exit(1);
-        },
+        }
     };
     if !ok {
         println!("Install cancelled...");
     }
 }
-

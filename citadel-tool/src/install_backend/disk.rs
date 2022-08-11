@@ -1,8 +1,7 @@
-use std::path::{Path,PathBuf};
 use std::fs;
+use std::path::{Path, PathBuf};
 
-use libcitadel::{Result, util};
-
+use libcitadel::{util, Result};
 
 #[derive(Debug, Clone)]
 pub struct Disk {
@@ -35,12 +34,12 @@ impl Disk {
     fn is_disk_removable(device: &Path) -> bool {
         if let Ok(removable) = util::read_to_string(device.join("removable")) {
             if removable.trim() == "1" {
-                return true
+                return true;
             }
         }
         false
     }
-    
+
     fn read_device(device: &Path) -> Result<Disk> {
         let path = Path::new("/dev/").join(device.file_name().unwrap());
 
@@ -59,7 +58,13 @@ impl Disk {
 
         let removable = Disk::is_disk_removable(device);
 
-        Ok(Disk { path, size, size_str, model, removable })
+        Ok(Disk {
+            path,
+            size,
+            size_str,
+            model,
+            removable,
+        })
     }
 
     pub fn path(&self) -> &Path {

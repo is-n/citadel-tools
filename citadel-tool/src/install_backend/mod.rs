@@ -1,24 +1,23 @@
-use libcitadel::Result;
-use std::process::exit;
+use zbus::{ConnectionBuilder, Result};
 
 mod disk;
-mod dbus;
-use libcitadel::CommandLine;
+mod zbus_server;
 
-pub fn main() {
-    if CommandLine::install_mode() {
-        if let Err(e) = run_dbus_server() {
-            warn!("Error: {}", e);
-        }
-    } else {
-        println!("Citadel installer backend will only run in install or live mode");
-        exit(1);
-    }
-}
+// Although we use `async-std` here, you can use any async runtime of choice.
+#[async_std::main]
+pub async fn main() -> Result<()> {
+    let server_manager = zbus_server::ServerManager {
+        done: event_listener::Event::new(),
+    };
+    let done_listener = server_manager.done.listen();
+    let _ = ConnectionBuilder::system()?
+        .name("com.subgraph.installer")?
+        .serve_at("/com/subgraph/installer", server_manager)?
+        .build()
+        .await?;
 
-fn run_dbus_server() -> Result<()> {
-    let server = dbus::DbusServer::connect()?;
-    server.start()?;
+    done_listener.wait();
+
+    //pending::<()>().await;
     Ok(())
 }
-

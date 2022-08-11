@@ -1,8 +1,7 @@
-use std::path::{Path,PathBuf};
 use std::fs;
+use std::path::{Path, PathBuf};
 
-use libcitadel::{Result, util};
-
+use libcitadel::{util, Result};
 
 #[derive(Debug, Clone)]
 pub struct Disk {
@@ -47,7 +46,12 @@ impl Disk {
             .trim()
             .to_string();
 
-        Ok(Disk { path, size, size_str, model })
+        Ok(Disk {
+            path,
+            size,
+            size_str,
+            model,
+        })
     }
 
     pub fn path(&self) -> &Path {

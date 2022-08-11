@@ -1,9 +1,9 @@
-use std::io::{self,Write};
-use std::path::Path;
-use libcitadel::Result;
 use super::disk::Disk;
-use rpassword;
 use crate::install::installer::Installer;
+use libcitadel::Result;
+use rpassword;
+use std::io::{self, Write};
+use std::path::Path;
 
 const CITADEL_PASSPHRASE_PROMPT: &str = "Enter a password for the Citadel user (or 'q' to quit)";
 const LUKS_PASSPHRASE_PROMPT: &str = "Enter a disk encryption passphrase (or 'q' to quit";
@@ -16,12 +16,16 @@ pub fn run_cli_install() -> Result<bool> {
 
     display_disk(&disk);
 
-    let citadel_passphrase = match read_passphrase(CITADEL_PASSPHRASE_PROMPT).map_err(context!("error reading citadel user passphrase"))? {
+    let citadel_passphrase = match read_passphrase(CITADEL_PASSPHRASE_PROMPT)
+        .map_err(context!("error reading citadel user passphrase"))?
+    {
         Some(citadel_passphrase) => citadel_passphrase,
         None => return Ok(false),
     };
 
-    let passphrase = match read_passphrase(LUKS_PASSPHRASE_PROMPT).map_err(context!("error reading luks passphrase"))? {
+    let passphrase = match read_passphrase(LUKS_PASSPHRASE_PROMPT)
+        .map_err(context!("error reading luks passphrase"))?
+    {
         Some(passphrase) => passphrase,
         None => return Ok(false),
     };
@@ -29,6 +33,7 @@ pub fn run_cli_install() -> Result<bool> {
     if !confirm_install(&disk)? {
         return Ok(false);
     }
+
     run_install(disk, citadel_passphrase, passphrase)?;
     Ok(true)
 }
@@ -37,12 +42,16 @@ pub fn run_cli_install_with<P: AsRef<Path>>(target: P) -> Result<bool> {
     let disk = find_disk_by_path(target.as_ref())?;
     display_disk(&disk);
 
-    let citadel_passphrase = match read_passphrase(CITADEL_PASSPHRASE_PROMPT).map_err(context!("error reading citadel user passphrase"))? {
+    let citadel_passphrase = match read_passphrase(CITADEL_PASSPHRASE_PROMPT)
+        .map_err(context!("error reading citadel user passphrase"))?
+    {
         Some(citadel_passphrase) => citadel_passphrase,
         None => return Ok(false),
     };
 
-    let passphrase = match read_passphrase(LUKS_PASSPHRASE_PROMPT).map_err(context!("error reading luks passphrase"))? {
+    let passphrase = match read_passphrase(LUKS_PASSPHRASE_PROMPT)
+        .map_err(context!("error reading luks passphrase"))?
+    {
         Some(passphrase) => passphrase,
         None => return Ok(false),
     };
@@ -96,7 +105,7 @@ fn choose_disk() -> Result<Option<Disk>> {
         }
         if let Ok(n) = line.parse::<usize>() {
             if n > 0 && n <= disks.len() {
-                return Ok(Some(disks[n-1].clone()));
+                return Ok(Some(disks[n - 1].clone()));
             }
         }
     }
@@ -104,8 +113,14 @@ fn choose_disk() -> Result<Option<Disk>> {
 
 fn prompt_choose_disk(disks: &[Disk]) {
     println!("Available disks:\n");
-    for (idx,disk) in disks.iter().enumerate() {
-        println!("  [{}]: {} Size: {} Model: {}", idx + 1, disk.path().display(), disk.size_str(), disk.model());
+    for (idx, disk) in disks.iter().enumerate() {
+        println!(
+            "  [{}]: {} Size: {} Model: {}",
+            idx + 1,
+            disk.path().display(),
+            disk.size_str(),
+            disk.model()
+        );
     }
     print!("\nChoose a disk to install to (q to quit): ");
     let _ = io::stdout().flush();
@@ -113,7 +128,8 @@ fn prompt_choose_disk(disks: &[Disk]) {
 
 fn read_line() -> Result<String> {
     let mut input = String::new();
-    io::stdin().read_line(&mut input)
+    io::stdin()
+        .read_line(&mut input)
         .map_err(context!("error reading line from stdin"))?;
     if input.ends_with('\n') {
         input.pop();
@@ -133,7 +149,7 @@ fn read_passphrase(prompt: &str) -> io::Result<Option<String>> {
         if passphrase == "q" || passphrase == "Q" {
             return Ok(None);
         }
-        let confirm    = rpassword::read_password_from_tty(Some("  Confirm    : "))?;
+        let confirm = rpassword::read_password_from_tty(Some("  Confirm    : "))?;
         if confirm == "q" || confirm == "Q" {
             return Ok(None);
         }
@@ -158,4 +174,3 @@ fn confirm_install(disk: &Disk) -> Result<bool> {
     let answer = read_line()?;
     Ok(answer == "YES")
 }
-
