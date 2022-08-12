@@ -21,14 +21,9 @@ mod sync;
 mod update;
 
 fn main() {
-    env_logger::init();
-
-    log::debug!("The Citadel daemon has started");
-
-    println!("{:?}", env::current_exe());
     let exe = match env::current_exe() {
         Ok(path) => path,
-        Err(_) => {
+        Err(_e) => {
             return;
         }
     };
@@ -39,7 +34,7 @@ fn main() {
         boot::main(args);
     } else if exe == Path::new("/usr/libexec/citadel-install") {
         install::main(args);
-    } else if true {
+    } else if exe == Path::new("/usr/libexec/citadel-install-backend") {
         install_backend::main();
     } else if exe == Path::new("/usr/bin/citadel-image") {
         image::main(args);
@@ -62,11 +57,6 @@ fn main() {
 
 fn dispatch_command(args: Vec<String>) {
     if let Some(command) = args.get(1) {
-        log::debug!(
-            "Citadel daemon started with the following command: {}",
-            command
-        );
-
         match command.as_str() {
             "boot" => boot::main(rebuild_args("citadel-boot", args)),
             "install" => install::main(rebuild_args("citadel-install", args)),
@@ -91,7 +81,7 @@ fn rebuild_args(command: &str, args: Vec<String>) -> Vec<String> {
 
 fn do_citadel_run(args: Vec<String>) {
     if let Err(e) = RealmManager::run_in_current(&args[1..], true) {
-        log::error!(
+        println!(
             "RealmManager::run_in_current({:?}) failed: {}",
             &args[1..],
             e
