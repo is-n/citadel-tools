@@ -18,6 +18,6 @@ pub async fn main() -> Result<()> {
 
     done_listener.wait();
 
-    //pending::<()>().await;
+    //std::future::pending::<()>().await;
     Ok(())
 }

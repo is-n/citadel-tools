@@ -1,0 +1,3 @@
+#!/usr/bin/bash
+docker run --rm --user "$(id -u)":"$(id -g)" -v "$PWD":/usr/src/myapp -w /usr/src/myapp rust:1.63.0 cargo build --release
+docker run -d -it --name=build_rust www:v1
