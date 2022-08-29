@@ -35,7 +35,7 @@ fn main() {
     } else if exe == Path::new("/usr/libexec/citadel-install") {
         install::main(args);
     } else if exe == Path::new("/usr/libexec/citadel-install-backend") {
-        install_backend::main();
+        install_backend::main().expect("Error: install_backend::main() failed");
     } else if exe == Path::new("/usr/bin/citadel-image") {
         image::main(args);
     } else if exe == Path::new("/usr/bin/citadel-realmfs") {
